@@ -247,7 +247,7 @@ class _ProductCard extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: isActive
-                                ? Colors.green.withOpacity(0.12)
+                                ? Colors.green.withValues(alpha: 0.12)
                                 : colorScheme.errorContainer,
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -269,7 +269,7 @@ class _ProductCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: colorScheme.onSurface.withOpacity(0.6),
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
                         fontSize: 13,
                       ),
                     ),
@@ -292,7 +292,7 @@ class _ProductCard extends StatelessWidget {
                 PopupMenuButton<String>(
                   icon: Icon(
                     Icons.more_vert,
-                    color: colorScheme.onSurface.withOpacity(0.5),
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                   tooltip: 'Product actions',
                   onSelected: (value) {

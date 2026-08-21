@@ -142,7 +142,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                           ? 'Update the product information below.'
                           : 'Fill in the details to add a new product.',
                       style: TextStyle(
-                        color: colorScheme.onSurface.withOpacity(0.6),
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 28),

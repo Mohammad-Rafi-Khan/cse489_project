@@ -8,6 +8,7 @@ class Task {
   final String? branchId;
   final String? createdBy;
   final int basePoints;
+  final int photoBonusPoints;
   final bool photoRequired;
   final bool isActive;
   final DateTime createdAt;
@@ -20,6 +21,7 @@ class Task {
     this.branchId,
     this.createdBy,
     required this.basePoints,
+    this.photoBonusPoints = 5,
     required this.photoRequired,
     required this.isActive,
     required this.createdAt,
@@ -33,7 +35,8 @@ class Task {
       frequency: map['frequency'] as String? ?? 'daily',
       branchId: map['branch_id'] as String?,
       createdBy: map['created_by'] as String?,
-      basePoints: map['base_points'] as int? ?? 0,
+      basePoints: map['base_points'] as int? ?? 10,
+      photoBonusPoints: map['photo_bonus_points'] as int? ?? 5,
       photoRequired: map['photo_required'] as bool? ?? false,
       isActive: map['is_active'] as bool? ?? true,
       createdAt: DateTime.parse(map['created_at'] as String),

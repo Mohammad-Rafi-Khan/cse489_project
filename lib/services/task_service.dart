@@ -1,33 +1,100 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/task.dart';
 import '../models/task_assignment.dart';
+import '../models/task_completion.dart';
 import '../models/user_profile.dart';
 
-/// Handles all Supabase queries for tasks and task assignments.
+/// Handles all Supabase queries for tasks, assignments, and multi-attempt completion workflows.
 class TaskService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   // ─── Task Templates ───────────────────────────────────────
 
-  /// Returns active task templates for a given branch.
+  /// Returns active task templates for a given branch or org-wide.
   Future<List<Task>> fetchTaskTemplates(String branchId) async {
     final data = await _supabase
         .from('tasks')
         .select()
-        .eq('branch_id', branchId)
+        .or('branch_id.eq.$branchId,branch_id.is.null')
         .eq('is_active', true)
         .order('title');
     return (data as List).map((e) => Task.fromMap(e)).toList();
   }
 
+  /// Returns ALL task templates for management screen.
+  Future<List<Task>> fetchAllTaskTemplates(String branchId) async {
+    final data = await _supabase
+        .from('tasks')
+        .select()
+        .or('branch_id.eq.$branchId,branch_id.is.null')
+        .order('title');
+    return (data as List).map((e) => Task.fromMap(e)).toList();
+  }
+
+  /// Creates a new task template.
+  Future<Task> createTaskTemplate({
+    required String title,
+    String? description,
+    required String frequency,
+    required String branchId,
+    required int basePoints,
+    required int photoBonusPoints,
+    required bool photoRequired,
+  }) async {
+    final userId = _supabase.auth.currentUser?.id;
+    final data = await _supabase
+        .from('tasks')
+        .insert({
+          'title': title,
+          'description': description,
+          'frequency': frequency,
+          'branch_id': branchId,
+          'created_by': userId,
+          'base_points': basePoints,
+          'photo_bonus_points': photoBonusPoints,
+          'photo_required': photoRequired,
+          'is_active': true,
+        })
+        .select()
+        .single();
+    return Task.fromMap(data);
+  }
+
+  /// Updates an existing task template.
+  Future<Task> updateTaskTemplate({
+    required String id,
+    required String title,
+    String? description,
+    required String frequency,
+    required int basePoints,
+    required int photoBonusPoints,
+    required bool photoRequired,
+    required bool isActive,
+  }) async {
+    final data = await _supabase
+        .from('tasks')
+        .update({
+          'title': title,
+          'description': description,
+          'frequency': frequency,
+          'base_points': basePoints,
+          'photo_bonus_points': photoBonusPoints,
+          'photo_required': photoRequired,
+          'is_active': isActive,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+    return Task.fromMap(data);
+  }
+
   // ─── Employees ────────────────────────────────────────────
 
-  /// Returns active employees belonging to a specific branch.
-  /// Used by managers when choosing who to assign a task to.
   Future<List<UserProfile>> fetchBranchEmployees(String branchId) async {
     final data = await _supabase
         .from('profiles')
-        .select()
+        .select('*, branches(name), badges(name)')
         .eq('branch_id', branchId)
         .eq('role', 'employee')
         .eq('is_active', true)
@@ -37,45 +104,160 @@ class TaskService {
 
   // ─── Task Assignment ──────────────────────────────────────
 
-  /// Creates a new task assignment (manager assigns task to employee).
+  /// Creates a new single task assignment.
   Future<TaskAssignment> assignTask({
     required String taskId,
     required String userId,
     required DateTime scheduledDate,
     DateTime? dueAt,
   }) async {
+    final dateStr =
+        '${scheduledDate.year}-${scheduledDate.month.toString().padLeft(2, '0')}-${scheduledDate.day.toString().padLeft(2, '0')}';
+
     final data = await _supabase
         .from('task_assignments')
         .insert({
           'task_id': taskId,
           'user_id': userId,
-          'scheduled_date':
-              '${scheduledDate.year}-${scheduledDate.month.toString().padLeft(2, '0')}-${scheduledDate.day.toString().padLeft(2, '0')}',
+          'scheduled_date': dateStr,
           'due_at': dueAt?.toIso8601String(),
           'status': 'pending',
         })
-        .select('*, tasks(title, description), profiles(name)')
+        .select(
+            '*, tasks(title, description, frequency, base_points, photo_bonus_points, photo_required), profiles(name), task_completions(*)')
         .single();
+
+    // Send in-app notification to employee
+    try {
+      final taskTitle = (data['tasks'] as Map<String, dynamic>?)?['title'] ?? 'New Task';
+      await _supabase.from('notifications').insert({
+        'user_id': userId,
+        'type': 'task_assigned',
+        'title': 'New Task Assigned',
+        'message': 'You have been assigned "$taskTitle" for $dateStr.',
+        'data': {'assignment_id': data['id']},
+      });
+    } catch (e) {
+      debugPrint('Notification dispatch error: $e');
+    }
+
     return TaskAssignment.fromMap(data);
   }
 
-  // ─── Manager Assignments ──────────────────────────────────
+  /// Bulk recurring assignments generation with duplicate prevention.
+  Future<int> generateRecurringAssignments({
+    required String taskId,
+    required List<String> userIds,
+    required List<DateTime> dates,
+  }) async {
+    if (userIds.isEmpty || dates.isEmpty) return 0;
 
-  /// Returns all assignments for employees in the manager's branch.
-  /// Joins task title and employee name for display.
-  Future<List<TaskAssignment>> fetchManagerAssignments(
-      String branchId) async {
-    // Fetch assignments where the assigned employee belongs to this branch
+    final sortedDates = [...dates]..sort();
+    return await _supabase.rpc('generate_recurring_task_assignments', params: {
+      'p_task_id': taskId,
+      'p_user_ids': userIds,
+      'p_start_date': _dateStr(sortedDates.first),
+      'p_end_date': _dateStr(sortedDates.last),
+    }) as int;
+  }
+
+  String _dateStr(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  // ─── Task Completion History (Separate Attempts) ──────────
+
+  /// Employee submits or resubmits a completion attempt.
+  Future<TaskCompletion> submitCompletion({
+    required String assignmentId,
+    String? completionNote,
+    String? photoUrl,
+  }) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    // Determine next attempt number
+    final existingAttempts = await _supabase
+        .from('task_completions')
+        .select('attempt_number')
+        .eq('assignment_id', assignmentId)
+        .order('attempt_number', ascending: false);
+
+    int nextAttemptNumber = 1;
+    if ((existingAttempts as List).isNotEmpty) {
+      nextAttemptNumber = ((existingAttempts.first['attempt_number'] as int?) ?? 0) + 1;
+    }
+
+    // Insert new attempt record
+    final compData = await _supabase
+        .from('task_completions')
+        .insert({
+          'assignment_id': assignmentId,
+          'attempt_number': nextAttemptNumber,
+          'submitted_by': userId,
+          'completion_note': completionNote,
+          'photo_url': photoUrl,
+          'status': 'submitted',
+        })
+        .select('*, submitter:profiles!task_completions_submitted_by_fkey(name)')
+        .single();
+
+    // Update parent assignment status to 'completed'
+    await _supabase
+        .from('task_assignments')
+        .update({'status': 'completed'})
+        .eq('id', assignmentId);
+
+    return TaskCompletion.fromMap(compData);
+  }
+
+  /// Manager approves a task completion attempt and awards points atomically.
+  ///
+  /// Calls the `approve_task_completion` RPC which verifies caller authorization,
+  /// enforces branch scoping, awards points, recalculates the badge, and sends the
+  /// approval notification — all in one database transaction.
+  ///
+  /// SECURITY: There is intentionally NO client-side fallback here.
+  /// If the RPC fails (permission denied, already approved, etc.) the error is
+  /// surfaced to the UI. Never bypass the RPC — it is the sole authorization gate.
+  Future<void> approveCompletion({
+    required String completionId,
+    required String assignmentId,
+    String? reviewNote,
+  }) async {
+    final callerId = _supabase.auth.currentUser?.id;
+    if (callerId == null) throw Exception('Not authenticated');
+
+    await _supabase.rpc('approve_task_completion', params: {
+      'p_completion_id': completionId,
+      'p_review_note': reviewNote,
+    });
+  }
+
+  /// Manager rejects a task completion attempt with reason.
+  Future<void> rejectCompletion({
+    required String completionId,
+    required String assignmentId,
+    required String reviewNote,
+  }) async {
+    await _supabase.rpc('reject_task_completion', params: {
+      'p_completion_id': completionId,
+      'p_review_note': reviewNote,
+    });
+  }
+
+  // ─── Query Assignments with Full Attempt Histories ─────────
+
+  /// Fetch all assignments for manager's branch with joined attempt histories.
+  Future<List<TaskAssignment>> fetchManagerAssignments(String branchId) async {
     final data = await _supabase
         .from('task_assignments')
-        .select('*, tasks(title, description), profiles!task_assignments_user_id_fkey(name, branch_id)')
+        .select(
+            '*, tasks(title, description, frequency, base_points, photo_bonus_points, photo_required), profiles!task_assignments_user_id_fkey(name, branch_id), task_completions(*, submitter:profiles!task_completions_submitted_by_fkey(name), reviewer:profiles!task_completions_reviewed_by_fkey(name))')
         .order('scheduled_date', ascending: false);
 
-    final assignments = (data as List).map((e) => TaskAssignment.fromMap(e)).toList();
+    final assignments =
+        (data as List).map((e) => TaskAssignment.fromMap(e)).toList();
 
-    // Filter client-side: only include employees from this branch
-    // (RLS already filters by branch, but the join doesn't expose branch_id
-    //  directly on the assignment — safer to double-check here)
     return assignments.where((a) {
       final profileData = data.firstWhere(
         (d) => d['id'] == a.id,
@@ -86,17 +268,15 @@ class TaskService {
     }).toList();
   }
 
-  // ─── Employee My Tasks ────────────────────────────────────
-
-  /// Returns all assignments for a specific employee.
-  /// RLS ensures this only returns the authenticated employee's own assignments.
-  Future<List<TaskAssignment>> fetchEmployeeAssignments(
-      String userId) async {
+  /// Fetch all assignments for an employee with full attempt history.
+  Future<List<TaskAssignment>> fetchEmployeeAssignments(String userId) async {
     final data = await _supabase
         .from('task_assignments')
-        .select('*, tasks(title, description)')
+        .select(
+            '*, tasks(title, description, frequency, base_points, photo_bonus_points, photo_required), task_completions(*, submitter:profiles!task_completions_submitted_by_fkey(name), reviewer:profiles!task_completions_reviewed_by_fkey(name))')
         .eq('user_id', userId)
         .order('scheduled_date', ascending: false);
+
     return (data as List).map((e) => TaskAssignment.fromMap(e)).toList();
   }
 }

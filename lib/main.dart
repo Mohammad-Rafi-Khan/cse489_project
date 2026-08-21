@@ -4,20 +4,39 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/supabase_config.dart';
 import 'providers/auth_provider.dart';
+import 'providers/branch_provider.dart';
+import 'providers/competition_provider.dart';
+import 'providers/notification_provider.dart';
 import 'providers/product_provider.dart';
+import 'providers/reports_provider.dart';
+import 'providers/sales_provider.dart';
+import 'providers/shift_provider.dart';
 import 'providers/task_provider.dart';
+import 'providers/user_management_provider.dart';
 
 // Screens
+import 'screens/admin/admin_dashboard.dart';
+import 'screens/admin/branch_management_screen.dart';
+import 'screens/admin/competition_form_screen.dart';
+import 'screens/admin/user_management_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/registration_screen.dart';
+import 'screens/competitions/competition_detail_screen.dart';
+import 'screens/competitions/competition_list_screen.dart';
 import 'screens/employee/employee_dashboard.dart';
 import 'screens/employee/my_tasks_screen.dart';
-import 'screens/manager/manager_dashboard.dart';
+import 'screens/employee/sales_entry_screen.dart';
 import 'screens/manager/assign_task_screen.dart';
 import 'screens/manager/assigned_tasks_screen.dart';
-import 'screens/admin/admin_dashboard.dart';
-import 'screens/products/product_list_screen.dart';
+import 'screens/manager/manager_dashboard.dart';
+import 'screens/manager/sales_performance_screen.dart';
+import 'screens/manager/sales_target_screen.dart';
+import 'screens/manager/shift_management_screen.dart';
+import 'screens/manager/task_template_screen.dart';
+import 'screens/notifications/notification_center_screen.dart';
 import 'screens/products/product_form_screen.dart';
+import 'screens/products/product_list_screen.dart';
+import 'screens/reports/reports_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +60,13 @@ class RetailFlowApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => ShiftProvider()),
+        ChangeNotifierProvider(create: (_) => SalesProvider()),
+        ChangeNotifierProvider(create: (_) => BranchProvider()),
+        ChangeNotifierProvider(create: (_) => UserManagementProvider()),
+        ChangeNotifierProvider(create: (_) => CompetitionProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => ReportsProvider()),
       ],
       child: MaterialApp(
         title: 'RetailFlow',
@@ -91,17 +117,93 @@ class RetailFlowApp extends StatelessWidget {
         ),
         // Startup screen checks for an existing session and routes accordingly
         home: const _AppStartupScreen(),
+        onGenerateRoute: (settings) {
+          if (settings.name == '/competition-detail') {
+            final compId = settings.arguments as String;
+            return MaterialPageRoute(
+              builder: (ctx) => _RouteGuard(
+                requiredRoles: const {'manager', 'admin'},
+                child: CompetitionDetailScreen(competitionId: compId),
+              ),
+            );
+          }
+          return null;
+        },
         routes: {
-          '/login': (context) => const LoginScreen(),
-          '/register': (context) => const RegistrationScreen(),
-          '/employee-dashboard': (context) => const EmployeeDashboardScreen(),
-          '/my-tasks': (context) => const MyTasksScreen(),
-          '/manager-dashboard': (context) => const ManagerDashboardScreen(),
-          '/assign-task': (context) => const AssignTaskScreen(),
-          '/assigned-tasks': (context) => const AssignedTasksScreen(),
-          '/admin-dashboard': (context) => const AdminDashboardScreen(),
-          '/products': (context) => const ProductListScreen(),
-          '/product-form': (context) => const ProductFormScreen(),
+          '/login':              (ctx) => const LoginScreen(),
+          '/register':           (ctx) => const RegistrationScreen(),
+          '/employee-dashboard': (ctx) => const EmployeeDashboardScreen(),
+          '/my-tasks':           (ctx) => const MyTasksScreen(),
+          '/sales-entry':        (ctx) => const _RouteGuard(
+            requiredRoles: {'employee'},
+            child: SalesEntryScreen(),
+          ),
+          '/notifications':      (ctx) => const _RouteGuard(
+            requiredRoles: {'employee', 'manager', 'admin'},
+            child: NotificationCenterScreen(),
+          ),
+          '/products':           (ctx) => const _RouteGuard(
+            requiredRoles: {'employee', 'manager', 'admin'},
+            child: ProductListScreen(),
+          ),
+          '/reports':            (ctx) => const _RouteGuard(
+            requiredRoles: {'employee', 'manager', 'admin'},
+            child: ReportsScreen(),
+          ),
+          '/competitions':       (ctx) => const _RouteGuard(
+            requiredRoles: {'employee', 'manager', 'admin'},
+            child: CompetitionListScreen(),
+          ),
+          // Manager-level routes
+          '/manager-dashboard':  (ctx) => const _RouteGuard(
+            requiredRoles: {'manager', 'admin'},
+            child: ManagerDashboardScreen(),
+          ),
+          '/assign-task':        (ctx) => const _RouteGuard(
+            requiredRoles: {'manager', 'admin'},
+            child: AssignTaskScreen(),
+          ),
+          '/assigned-tasks':     (ctx) => const _RouteGuard(
+            requiredRoles: {'manager', 'admin'},
+            child: AssignedTasksScreen(),
+          ),
+          '/task-templates':     (ctx) => const _RouteGuard(
+            requiredRoles: {'manager', 'admin'},
+            child: TaskTemplateScreen(),
+          ),
+          '/shift-management':   (ctx) => const _RouteGuard(
+            requiredRoles: {'manager', 'admin'},
+            child: ShiftManagementScreen(),
+          ),
+          '/sales-targets':      (ctx) => const _RouteGuard(
+            requiredRoles: {'manager', 'admin'},
+            child: SalesTargetScreen(),
+          ),
+          '/sales-performance':  (ctx) => const _RouteGuard(
+            requiredRoles: {'manager', 'admin'},
+            child: SalesPerformanceScreen(),
+          ),
+          // Admin-only routes
+          '/admin-dashboard':    (ctx) => const _RouteGuard(
+            requiredRoles: {'admin'},
+            child: AdminDashboardScreen(),
+          ),
+          '/branch-management':  (ctx) => const _RouteGuard(
+            requiredRoles: {'admin'},
+            child: BranchManagementScreen(),
+          ),
+          '/user-management':    (ctx) => const _RouteGuard(
+            requiredRoles: {'admin'},
+            child: UserManagementScreen(),
+          ),
+          '/competition-form':   (ctx) => const _RouteGuard(
+            requiredRoles: {'admin'},
+            child: CompetitionFormScreen(),
+          ),
+          '/product-form':       (ctx) => const _RouteGuard(
+            requiredRoles: {'manager', 'admin'},
+            child: ProductFormScreen(),
+          ),
         },
       ),
     );
@@ -109,8 +211,6 @@ class RetailFlowApp extends StatelessWidget {
 }
 
 /// Shown while the app checks for an existing Supabase session at startup.
-/// Routes the user to the correct screen without showing the login screen
-/// if they are already signed in.
 class _AppStartupScreen extends StatefulWidget {
   const _AppStartupScreen();
 
@@ -122,7 +222,6 @@ class _AppStartupScreenState extends State<_AppStartupScreen> {
   @override
   void initState() {
     super.initState();
-    // Wait for the first frame so that Providers are ready
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkSession());
   }
 
@@ -196,7 +295,7 @@ class _AppStartupScreenState extends State<_AppStartupScreen> {
                   'Retail Management System',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: colorScheme.onSurface.withOpacity(0.55),
+                    color: colorScheme.onSurface.withValues(alpha: 0.55),
                     fontSize: 14,
                   ),
                 ),
@@ -214,6 +313,47 @@ class _AppStartupScreenState extends State<_AppStartupScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Guards a route to users whose role is in [requiredRoles].
+///
+/// When a user navigates to a guarded route without the required role, they are
+/// immediately redirected to their correct role-appropriate dashboard. This is a
+/// defence-in-depth measure — the database RLS policies are the primary security
+/// control, but this prevents confusing UX from showing admin screens to employees.
+class _RouteGuard extends StatelessWidget {
+  final Set<String> requiredRoles;
+  final Widget child;
+
+  const _RouteGuard({
+    required this.requiredRoles,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final role = context.read<AuthProvider>().profile?.role;
+
+    if (role != null && requiredRoles.contains(role)) {
+      return child;
+    }
+
+    // Redirect asynchronously after build to avoid calling Navigator during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      final destination = switch (role) {
+        'admin'   => '/admin-dashboard',
+        'manager' => '/manager-dashboard',
+        _         => '/employee-dashboard',
+      };
+      Navigator.pushReplacementNamed(context, destination);
+    });
+
+    // Show spinner while redirecting
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }

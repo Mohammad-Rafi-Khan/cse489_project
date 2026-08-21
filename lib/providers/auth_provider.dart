@@ -117,6 +117,20 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Refreshes the current user's profile from Supabase (e.g., after points are awarded).
+  Future<void> reloadProfile() async {
+    try {
+      final updated = await _authService.getSessionProfile();
+      if (updated != null) {
+        _profile = updated;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Reload profile error: $e');
+    }
+  }
+
+
   // ─── Helpers ──────────────────────────────────────────────
 
   void _setLoading(bool value) {

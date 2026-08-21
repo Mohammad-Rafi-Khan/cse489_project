@@ -1,0 +1,3 @@
+manager1@retailflow.com pass: 12345678
+employee1@retailflow.com pass: 12345678
+employee2@retailflow.com pass: 12345678
