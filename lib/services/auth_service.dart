@@ -15,6 +15,15 @@ class RegistrationResult {
   bool get hasSession => profile != null;
 }
 
+class AuthProfileException implements Exception {
+  final String message;
+
+  const AuthProfileException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 /// Handles all Supabase Auth operations and profile management.
 class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -36,10 +45,7 @@ class AuthService {
     final response = await _supabase.auth.signUp(
       email: email.trim().toLowerCase(),
       password: password,
-      data: {
-        'name': name.trim(),
-        'branch_id': branchId,
-      },
+      data: {'name': name.trim(), 'branch_id': branchId.trim()},
     );
 
     final user = response.user;
@@ -73,7 +79,12 @@ class AuthService {
       throw Exception('Invalid email or password.');
     }
 
-    return fetchProfile(user.id);
+    try {
+      return await fetchProfile(user.id);
+    } catch (_) {
+      await _supabase.auth.signOut();
+      rethrow;
+    }
   }
 
   // ─── Session ──────────────────────────────────────────────
@@ -91,9 +102,16 @@ class AuthService {
   Future<UserProfile> fetchProfile(String userId) async {
     final data = await _supabase
         .from('profiles')
-        .select()
+        .select(
+          '*, branches!profiles_branch_id_fkey(name), badges!profiles_current_badge_id_fkey(name)',
+        )
         .eq('id', userId)
-        .single();
+        .maybeSingle();
+    if (data == null) {
+      throw const AuthProfileException(
+        'Login succeeded, but this account has no RetailFlow profile. Run the profile backfill SQL or ask an admin to create the profile.',
+      );
+    }
     return UserProfile.fromMap(data);
   }
 

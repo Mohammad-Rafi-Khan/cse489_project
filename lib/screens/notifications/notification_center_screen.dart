@@ -9,7 +9,8 @@ class NotificationCenterScreen extends StatefulWidget {
   const NotificationCenterScreen({super.key});
 
   @override
-  State<NotificationCenterScreen> createState() => _NotificationCenterScreenState();
+  State<NotificationCenterScreen> createState() =>
+      _NotificationCenterScreenState();
 }
 
 class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
@@ -27,16 +28,20 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     switch (type) {
       case 'task_assigned':
         return Icons.assignment_outlined;
+      case 'pending_approval':
+        return Icons.rate_review_outlined;
       case 'task_approved':
         return Icons.verified_outlined;
       case 'task_rejected':
         return Icons.cancel_outlined;
+      case 'deadline_reminder':
+        return Icons.alarm_outlined;
       case 'shift_assigned':
         return Icons.schedule_outlined;
+      case 'target_achieved':
+        return Icons.flag_outlined;
       case 'badge_unlocked':
         return Icons.emoji_events_outlined;
-      case 'competition_update':
-        return Icons.leaderboard_outlined;
       default:
         return Icons.notifications_outlined;
     }
@@ -47,13 +52,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     switch (type) {
       case 'task_approved':
       case 'badge_unlocked':
+      case 'target_achieved':
         return Colors.green;
       case 'task_rejected':
         return cs.error;
+      case 'pending_approval':
+      case 'deadline_reminder':
+        return Colors.deepOrange;
       case 'shift_assigned':
         return Colors.teal;
-      case 'competition_update':
-        return Colors.orange;
       default:
         return cs.primary;
     }
@@ -75,12 +82,17 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.done_all, color: Colors.white, size: 18),
-            label: const Text('Mark All Read', style: TextStyle(color: Colors.white)),
+            label: const Text(
+              'Mark All Read',
+              style: TextStyle(color: Colors.white),
+            ),
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
               await context.read<NotificationProvider>().markAllAsRead();
               messenger.showSnackBar(
-                const SnackBar(content: Text('All notifications marked as read.')),
+                const SnackBar(
+                  content: Text('All notifications marked as read.'),
+                ),
               );
             },
           ),
@@ -124,7 +136,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                 if (list.isEmpty) {
                   return EmptyState(
                     icon: Icons.notifications_none_outlined,
-                    title: _filter == 'unread' ? 'No Unread Notifications' : 'No Notifications',
+                    title: _filter == 'unread'
+                        ? 'No Unread Notifications'
+                        : 'No Notifications',
                     subtitle: 'You are all caught up on all alerts and tasks.',
                     action: TextButton.icon(
                       icon: const Icon(Icons.refresh),
@@ -142,7 +156,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     itemBuilder: (context, index) {
                       final item = list[index];
                       final typeColor = _colorForType(context, item.type);
-                      final timeStr = DateFormat('dd MMM, h:mm a').format(item.createdAt.toLocal());
+                      final timeStr = DateFormat(
+                        'dd MMM, h:mm a',
+                      ).format(item.createdAt.toLocal());
 
                       return Center(
                         child: ConstrainedBox(
@@ -151,9 +167,14 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                             margin: const EdgeInsets.only(bottom: 8),
                             color: item.isRead
                                 ? colorScheme.surface
-                                : colorScheme.primaryContainer.withValues(alpha: 0.25),
+                                : colorScheme.primaryContainer.withValues(
+                                    alpha: 0.25,
+                                  ),
                             child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                               leading: Container(
                                 width: 42,
                                 height: 42,
@@ -161,7 +182,11 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                   color: typeColor.withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(_iconForType(item.type), color: typeColor, size: 22),
+                                child: Icon(
+                                  _iconForType(item.type),
+                                  color: typeColor,
+                                  size: 22,
+                                ),
                               ),
                               title: Row(
                                 children: [
@@ -169,7 +194,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                     child: Text(
                                       item.title,
                                       style: TextStyle(
-                                        fontWeight: item.isRead ? FontWeight.w600 : FontWeight.bold,
+                                        fontWeight: item.isRead
+                                            ? FontWeight.w600
+                                            : FontWeight.bold,
                                         fontSize: 15,
                                       ),
                                     ),
@@ -192,7 +219,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                   Text(
                                     item.message,
                                     style: TextStyle(
-                                      color: colorScheme.onSurface.withValues(alpha: 0.8),
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.8,
+                                      ),
                                       fontSize: 13,
                                     ),
                                   ),
@@ -201,7 +230,9 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                                     timeStr,
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.5,
+                                      ),
                                     ),
                                   ),
                                 ],

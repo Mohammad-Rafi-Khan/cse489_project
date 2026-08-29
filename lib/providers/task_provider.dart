@@ -73,6 +73,7 @@ class TaskProvider extends ChangeNotifier {
     required int basePoints,
     required int photoBonusPoints,
     required bool photoRequired,
+    int? deadlineHoursAfterAssignment,
   }) async {
     _setLoading(true);
     _clearError();
@@ -85,6 +86,7 @@ class TaskProvider extends ChangeNotifier {
         basePoints: basePoints,
         photoBonusPoints: photoBonusPoints,
         photoRequired: photoRequired,
+        deadlineHoursAfterAssignment: deadlineHoursAfterAssignment,
       );
       _allTaskTemplates = [task, ..._allTaskTemplates];
       if (task.isActive) _taskTemplates = [task, ..._taskTemplates];
@@ -108,6 +110,7 @@ class TaskProvider extends ChangeNotifier {
     required int photoBonusPoints,
     required bool photoRequired,
     required bool isActive,
+    int? deadlineHoursAfterAssignment,
   }) async {
     _setLoading(true);
     _clearError();
@@ -121,41 +124,16 @@ class TaskProvider extends ChangeNotifier {
         photoBonusPoints: photoBonusPoints,
         photoRequired: photoRequired,
         isActive: isActive,
+        deadlineHoursAfterAssignment: deadlineHoursAfterAssignment,
       );
-      _allTaskTemplates =
-          _allTaskTemplates.map((t) => t.id == id ? updated : t).toList();
+      _allTaskTemplates = _allTaskTemplates
+          .map((t) => t.id == id ? updated : t)
+          .toList();
       _taskTemplates = _allTaskTemplates.where((t) => t.isActive).toList();
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to update task template.';
       debugPrint('Update task template error: $e');
-      notifyListeners();
-      rethrow;
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // ─── Recurring Automation ─────────────────────────────────
-
-  Future<int> generateRecurringAssignments({
-    required String taskId,
-    required List<String> userIds,
-    required List<DateTime> dates,
-  }) async {
-    _setLoading(true);
-    _clearError();
-    try {
-      final count = await _taskService.generateRecurringAssignments(
-        taskId: taskId,
-        userIds: userIds,
-        dates: dates,
-      );
-      notifyListeners();
-      return count;
-    } catch (e) {
-      _errorMessage = 'Failed to generate recurring assignments.';
-      debugPrint('Generate recurring error: $e');
       notifyListeners();
       rethrow;
     } finally {
@@ -346,7 +324,9 @@ class TaskProvider extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     try {
-      _managerAssignments = await _taskService.fetchManagerAssignments(branchId);
+      _managerAssignments = await _taskService.fetchManagerAssignments(
+        branchId,
+      );
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to load assignments.';
@@ -361,7 +341,9 @@ class TaskProvider extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     try {
-      _employeeAssignments = await _taskService.fetchEmployeeAssignments(userId);
+      _employeeAssignments = await _taskService.fetchEmployeeAssignments(
+        userId,
+      );
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to load tasks.';

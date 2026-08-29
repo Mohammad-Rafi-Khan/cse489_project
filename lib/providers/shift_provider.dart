@@ -101,8 +101,7 @@ class ShiftProvider extends ChangeNotifier {
         endTime: endTime,
         isActive: isActive,
       );
-      _allShifts =
-          _allShifts.map((s) => s.id == id ? updated : s).toList();
+      _allShifts = _allShifts.map((s) => s.id == id ? updated : s).toList();
       _shifts = _allShifts.where((s) => s.isActive).toList();
       notifyListeners();
     } catch (e) {
@@ -121,8 +120,7 @@ class ShiftProvider extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     try {
-      _branchEmployees =
-          await _shiftService.fetchBranchEmployees(branchId);
+      _branchEmployees = await _shiftService.fetchBranchEmployees(branchId);
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to load employees.';
@@ -137,8 +135,10 @@ class ShiftProvider extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     try {
-      _scheduleForDate =
-          await _shiftService.fetchScheduleForDate(branchId, date);
+      _scheduleForDate = await _shiftService.fetchScheduleForDate(
+        branchId,
+        date,
+      );
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to load schedule.';
@@ -197,8 +197,9 @@ class ShiftProvider extends ChangeNotifier {
     _clearError();
     try {
       await _shiftService.removeEmployeeShift(employeeShiftId);
-      _scheduleForDate =
-          _scheduleForDate.where((es) => es.id != employeeShiftId).toList();
+      _scheduleForDate = _scheduleForDate
+          .where((es) => es.id != employeeShiftId)
+          .toList();
       notifyListeners();
     } catch (e) {
       _errorMessage = 'Failed to remove shift assignment.';

@@ -5,8 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/empty_state.dart';
 
-/// Displays the full product list with add/edit/activate actions.
-/// Managers and admins see action buttons; employees see read-only.
+/// Displays products as the active pricing catalog for imported sales analytics.
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
 
@@ -38,7 +37,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           title: const Text('Deactivate Product'),
           content: Text(
             'Are you sure you want to deactivate "${product.name}"? '
-            'It will no longer appear in new entries.',
+            'It will no longer appear in new sales imports.',
           ),
           actions: [
             TextButton(
@@ -55,6 +54,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ],
         ),
       );
+      if (!mounted) return;
       if (confirmed != true) return;
     }
 
@@ -93,7 +93,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Products',
+          'Product Price Management',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: colorScheme.primary,
@@ -106,7 +106,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
               tooltip: 'Add Product',
               onPressed: () async {
                 await Navigator.pushNamed(context, '/product-form');
-                if (mounted) context.read<ProductProvider>().loadProducts();
+                if (!context.mounted) return;
+                context.read<ProductProvider>().loadProducts();
               },
             ),
         ],
@@ -122,7 +123,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               icon: Icons.inventory_2_outlined,
               title: 'No Products',
               subtitle: canEdit
-                  ? 'Tap the + button to add your first product.'
+                  ? 'Add products and maintain pricing for branch operations.'
                   : 'No products have been added yet.',
               action: TextButton.icon(
                 icon: const Icon(Icons.refresh),
@@ -152,9 +153,51 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           '/product-form',
                           arguments: product,
                         );
-                        if (mounted) productProvider.loadProducts();
+                        if (!mounted) return;
+                        productProvider.loadProducts();
                       },
                       onToggleActive: () => _toggleActive(product),
+                      onViewHistory: () async {
+                        final history = await productProvider.fetchPriceHistory(product.id);
+                        if (!mounted) return;
+                        if (!context.mounted) return;
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: Text('Price History - ${product.name}'),
+                            content: SizedBox(
+                              width: 420,
+                              child: history.isEmpty
+                                  ? const Text('No price changes recorded yet.')
+                                  : ListView.separated(
+                                      shrinkWrap: true,
+                                      itemCount: history.length,
+                                      separatorBuilder: (_, _) => const Divider(),
+                                      itemBuilder: (context, index) {
+                                        final item = history[index];
+                                        final oldPrice = (item['old_price'] as num?)?.toDouble() ?? 0;
+                                        final newPrice = (item['new_price'] as num?)?.toDouble() ?? 0;
+                                        final updateTime = item['updated_at'] != null
+                                            ? DateTime.parse(item['updated_at'] as String)
+                                            : DateTime.now();
+                                        return ListTile(
+                                          title: Text('BDT ${newPrice.toStringAsFixed(0)}'),
+                                          subtitle: Text(
+                                            'From BDT ${oldPrice.toStringAsFixed(0)} • ${updateTime.toLocal().toString().substring(0, 16)}',
+                                          ),
+                                        );
+                                      },
+                                    ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Close'),
+                              )
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 );
@@ -167,7 +210,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ? FloatingActionButton.extended(
               onPressed: () async {
                 await Navigator.pushNamed(context, '/product-form');
-                if (mounted) context.read<ProductProvider>().loadProducts();
+                if (!context.mounted) return;
+                context.read<ProductProvider>().loadProducts();
               },
               icon: const Icon(Icons.add),
               label: const Text('Add Product'),
@@ -182,12 +226,14 @@ class _ProductCard extends StatelessWidget {
   final bool canEdit;
   final VoidCallback onEdit;
   final VoidCallback onToggleActive;
+  final VoidCallback onViewHistory;
 
   const _ProductCard({
     required this.product,
     required this.canEdit,
     required this.onEdit,
     required this.onToggleActive,
+    required this.onViewHistory,
   });
 
   @override
@@ -234,8 +280,9 @@ class _ProductCard extends StatelessWidget {
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
-                              decoration:
-                                  isActive ? null : TextDecoration.lineThrough,
+                              decoration: isActive
+                                  ? null
+                                  : TextDecoration.lineThrough,
                             ),
                           ),
                         ),
@@ -257,7 +304,9 @@ class _ProductCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isActive ? Colors.green : colorScheme.error,
+                              color: isActive
+                                  ? Colors.green
+                                  : colorScheme.error,
                             ),
                           ),
                         ),
@@ -273,16 +322,19 @@ class _ProductCard extends StatelessWidget {
                         fontSize: 13,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '৳${product.unitPrice.toStringAsFixed(2)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.sell_outlined, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'BDT ${product.currentPrice.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -297,6 +349,7 @@ class _ProductCard extends StatelessWidget {
                   tooltip: 'Product actions',
                   onSelected: (value) {
                     if (value == 'edit') onEdit();
+                    if (value == 'history') onViewHistory();
                     if (value == 'toggle') onToggleActive();
                   },
                   itemBuilder: (_) => [
@@ -307,6 +360,16 @@ class _ProductCard extends StatelessWidget {
                           Icon(Icons.edit_outlined, size: 18),
                           SizedBox(width: 8),
                           Text('Edit'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'history',
+                      child: Row(
+                        children: [
+                          Icon(Icons.history_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Text('Price History'),
                         ],
                       ),
                     ),

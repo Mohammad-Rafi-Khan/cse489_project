@@ -1,7 +1,7 @@
 /// Represents a reward badge tier from the `badges` table.
 class BadgeTier {
   final String id;
-  final String name; // 'Bronze', 'Silver', 'Gold', 'Platinum'
+  final String name; // 'Bronze', 'Silver', 'Gold'
   final int minPoints;
   final String? description;
   final String iconName;

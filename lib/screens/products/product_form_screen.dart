@@ -31,7 +31,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       _editingProduct = args;
       _nameController.text = args.name;
       _categoryController.text = args.category;
-      _priceController.text = args.unitPrice.toStringAsFixed(2);
+      _priceController.text = args.currentPrice.toStringAsFixed(0);
     }
   }
 
@@ -50,7 +50,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
     final name = _nameController.text.trim();
     final category = _categoryController.text.trim();
-    final price = double.tryParse(_priceController.text.trim()) ?? 0;
+    final priceValue = double.tryParse(_priceController.text.trim()) ?? 0;
 
     setState(() => _isSubmitting = true);
 
@@ -62,13 +62,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           id: _editingProduct!.id,
           name: name,
           category: category,
-          unitPrice: price,
+          currentPrice: priceValue,
         );
       } else {
         await productProvider.addProduct(
           name: name,
           category: category,
-          unitPrice: price,
+          currentPrice: priceValue,
         );
       }
 
@@ -86,15 +86,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       );
 
       Navigator.pop(context);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
+        final message =
+            context.read<ProductProvider>().errorMessage ?? error.toString();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              _isEditing
-                  ? 'Failed to update product.'
-                  : 'Failed to add product.',
-            ),
+            content: Text(message),
             backgroundColor: Colors.red,
           ),
         );
@@ -133,8 +131,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     Text(
                       _isEditing ? 'Edit Product Details' : 'New Product',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -177,23 +175,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     const SizedBox(height: 16),
                     CustomTextField(
                       controller: _priceController,
-                      label: 'Unit Price (৳)',
-                      hint: 'e.g. 50.00',
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      prefixIcon: const Icon(Icons.currency_exchange),
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
+                      label: 'Current Price (BDT)',
+                      hint: 'e.g. 55',
+                      keyboardType: TextInputType.number,
+                      prefixIcon: const Icon(Icons.attach_money_outlined),
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Unit price is required';
-                        }
-                        final parsed = double.tryParse(value.trim());
-                        if (parsed == null) {
-                          return 'Enter a valid number';
-                        }
-                        if (parsed <= 0) {
-                          return 'Price must be greater than zero';
+                        final parsed = double.tryParse(value?.trim() ?? '');
+                        if (parsed == null || parsed < 0) {
+                          return 'Enter a valid price';
                         }
                         return null;
                       },

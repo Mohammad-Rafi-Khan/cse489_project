@@ -91,11 +91,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/login',
-          (route) => false,
-        );
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       }
     } catch (_) {
       // Provider exposes a friendly error message in the UI.
@@ -137,7 +133,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   Text(
                     'Register as an employee to get started',
                     style: TextStyle(
-                      color: colorScheme.onSurface.withOpacity(0.6),
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -236,8 +232,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Email is required';
                             }
-                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
-                                .hasMatch(value.trim())) {
+                            if (!RegExp(
+                              r'^[^@]+@[^@]+\.[^@]+',
+                            ).hasMatch(value.trim())) {
                               return 'Enter a valid email address';
                             }
                             return null;
@@ -301,7 +298,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         Consumer<AuthProvider>(
                           builder: (context, auth, _) {
                             return DropdownButtonFormField<Branch>(
-                              value: _selectedBranch,
+                              initialValue: _selectedBranch,
                               isExpanded: true,
                               menuMaxHeight: 320,
                               decoration: InputDecoration(
@@ -315,8 +312,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color:
-                                        colorScheme.outline.withOpacity(0.5),
+                                    color: colorScheme.outline.withValues(
+                                      alpha: 0.5,
+                                    ),
                                   ),
                                 ),
                                 filled: true,
@@ -348,8 +346,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                               onChanged: auth.isLoading
                                   ? null
                                   : (branch) => setState(
-                                        () => _selectedBranch = branch,
-                                      ),
+                                      () => _selectedBranch = branch,
+                                    ),
                               validator: (_) => _selectedBranch == null
                                   ? 'Please select a branch'
                                   : null,
@@ -377,7 +375,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         Text(
                           'Already have an account? ',
                           style: TextStyle(
-                            color: colorScheme.onSurface.withOpacity(0.6),
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                         TextButton(

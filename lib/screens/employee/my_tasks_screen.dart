@@ -30,9 +30,9 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
   Future<void> _loadTasks() async {
     final auth = context.read<AuthProvider>();
     if (auth.profile == null) return;
-    await context
-        .read<TaskProvider>()
-        .loadEmployeeAssignments(auth.profile!.id);
+    await context.read<TaskProvider>().loadEmployeeAssignments(
+      auth.profile!.id,
+    );
   }
 
   void _openCompletionSheet(TaskAssignment assignment) {
@@ -117,8 +117,9 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
 
                 var assignments = taskProvider.employeeAssignments;
                 if (_filter != 'all') {
-                  assignments =
-                      assignments.where((a) => a.status == _filter).toList();
+                  assignments = assignments
+                      .where((a) => a.status == _filter)
+                      .toList();
                 }
 
                 if (assignments.isEmpty) {
@@ -148,12 +149,16 @@ class _MyTasksScreenState extends State<MyTasksScreen> {
                           constraints: const BoxConstraints(maxWidth: 760),
                           child: _TaskCard(
                             assignment: assignments[index],
-                            onComplete: assignments[index].status == 'pending' ||
+                            onComplete:
+                                assignments[index].status == 'pending' ||
                                     assignments[index].status == 'rejected'
                                 ? () => _openCompletionSheet(assignments[index])
                                 : null,
-                            onViewHistory: assignments[index].completions.isNotEmpty
-                                ? () => _showAttemptsHistoryDialog(assignments[index])
+                            onViewHistory:
+                                assignments[index].completions.isNotEmpty
+                                ? () => _showAttemptsHistoryDialog(
+                                    assignments[index],
+                                  )
                                 : null,
                           ),
                         ),
@@ -326,7 +331,11 @@ class _TaskCard extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.star_outline, size: 14, color: Colors.amber.shade700),
+                    Icon(
+                      Icons.star_outline,
+                      size: 14,
+                      color: Colors.amber.shade700,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${assignment.basePoints} pts base',
@@ -342,7 +351,11 @@ class _TaskCard extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.add_a_photo_outlined, size: 14, color: Colors.teal.shade700),
+                      Icon(
+                        Icons.add_a_photo_outlined,
+                        size: 14,
+                        color: Colors.teal.shade700,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '+${assignment.photoBonusPoints} pts photo bonus',
@@ -358,7 +371,11 @@ class _TaskCard extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.camera_alt_outlined, size: 14, color: colorScheme.primary),
+                      Icon(
+                        Icons.camera_alt_outlined,
+                        size: 14,
+                        color: colorScheme.primary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Photo proof required',
@@ -409,8 +426,11 @@ class _TaskCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded,
-                            size: 16, color: colorScheme.onErrorContainer),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 16,
+                          color: colorScheme.onErrorContainer,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Rejection Reason',
@@ -463,9 +483,11 @@ class _TaskCard extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: Text(assignment.status == 'rejected'
-                      ? 'Resubmit Task with Revision'
-                      : 'Mark as Complete & Submit Proof'),
+                  label: Text(
+                    assignment.status == 'rejected'
+                        ? 'Resubmit Task with Revision'
+                        : 'Mark as Complete & Submit Proof',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.primary,
                     foregroundColor: colorScheme.onPrimary,
@@ -574,7 +596,9 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
     if (photoRequired && !hasPhoto) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Photo proof is required for this task. Please take or choose a photo.'),
+          content: Text(
+            'Photo proof is required for this task. Please take or choose a photo.',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -587,13 +611,13 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
     setState(() => _isSubmitting = true);
     try {
       await context.read<TaskProvider>().submitCompletion(
-            assignmentId: widget.assignment.id,
-            completionNote: _noteController.text.trim().isEmpty
-                ? null
-                : _noteController.text.trim(),
-            photoFile: _selectedImageFile,
-            userId: auth.profile!.id,
-          );
+        assignmentId: widget.assignment.id,
+        completionNote: _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim(),
+        photoFile: _selectedImageFile,
+        userId: auth.profile!.id,
+      );
 
       if (mounted) {
         Navigator.pop(context);
@@ -608,7 +632,9 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Submission failed: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'Submission failed: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -668,10 +694,14 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
 
                   // Photo proof section
                   Text(
-                    photoRequired ? 'Photo Proof * (Required)' : 'Photo Proof (Optional +Bonus Pts)',
+                    photoRequired
+                        ? 'Photo Proof * (Required)'
+                        : 'Photo Proof (Optional +Bonus Pts)',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: photoRequired ? colorScheme.primary : colorScheme.onSurface,
+                      color: photoRequired
+                          ? colorScheme.primary
+                          : colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -681,7 +711,10 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        border: Border.all(color: colorScheme.primary, width: 2),
+                        border: Border.all(
+                          color: colorScheme.primary,
+                          width: 2,
+                        ),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Column(
@@ -708,13 +741,24 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
                             children: [
                               Text(
                                 _selectedImageFile!.name,
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                               TextButton.icon(
-                                icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
-                                label: const Text('Remove', style: TextStyle(color: Colors.red)),
-                                onPressed: () => setState(() => _selectedImageFile = null),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: Colors.red,
+                                ),
+                                label: const Text(
+                                  'Remove',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                                onPressed: () =>
+                                    setState(() => _selectedImageFile = null),
                               ),
                             ],
                           ),
@@ -730,7 +774,9 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
                             label: const Text('Camera'),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             onPressed: () => _pickImage(ImageSource.camera),
                           ),
@@ -742,7 +788,9 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
                             label: const Text('Gallery'),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             onPressed: () => _pickImage(ImageSource.gallery),
                           ),
@@ -759,7 +807,9 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
                       labelText: 'Completion Note (optional)',
                       hintText: 'Describe actions taken or observations...',
                       prefixIcon: const Icon(Icons.notes_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       alignLabelWithHint: true,
                     ),
                   ),
@@ -780,13 +830,17 @@ class _TaskCompletionSheetState extends State<_TaskCompletionSheet> {
                             )
                           : const Icon(Icons.send_rounded),
                       label: Text(
-                        _isSubmitting ? 'Uploading & Submitting...' : 'Submit for Approval',
+                        _isSubmitting
+                            ? 'Uploading & Submitting...'
+                            : 'Submit for Approval',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colorScheme.primary,
                         foregroundColor: colorScheme.onPrimary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: _isSubmitting ? null : _submit,
                     ),
@@ -825,7 +879,7 @@ class _AttemptsHistoryDialog extends StatelessWidget {
         child: ListView.separated(
           shrinkWrap: true,
           itemCount: attempts.length,
-          separatorBuilder: (_, __) => const Divider(height: 24),
+          separatorBuilder: (_, _) => const Divider(height: 24),
           itemBuilder: (context, index) {
             final attempt = attempts[index];
             final statusColor = attempt.isApproved
@@ -840,10 +894,16 @@ class _AttemptsHistoryDialog extends StatelessWidget {
                   children: [
                     Text(
                       'Attempt #${attempt.attemptNumber}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
@@ -862,35 +922,51 @@ class _AttemptsHistoryDialog extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Submitted: ${DateFormat('dd MMM yyyy, h:mm a').format(attempt.submittedAt.toLocal())}',
-                  style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.6)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: cs.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
-                if (attempt.completionNote != null && attempt.completionNote!.isNotEmpty) ...[
+                if (attempt.completionNote != null &&
+                    attempt.completionNote!.isNotEmpty) ...[
                   const SizedBox(height: 6),
-                  Text('Note: ${attempt.completionNote!}', style: const TextStyle(fontSize: 13)),
+                  Text(
+                    'Note: ${attempt.completionNote!}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ],
-                if (attempt.photoUrl != null && attempt.photoUrl!.isNotEmpty) ...[
+                if (attempt.photoUrl != null &&
+                    attempt.photoUrl!.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Row(
                     children: [
                       Icon(Icons.photo_outlined, size: 14, color: cs.primary),
                       const SizedBox(width: 4),
-                      Text('Photo attached', style: TextStyle(fontSize: 12, color: cs.primary)),
+                      Text(
+                        'Photo attached',
+                        style: TextStyle(fontSize: 12, color: cs.primary),
+                      ),
                     ],
                   ),
                 ],
-                if (attempt.reviewNote != null && attempt.reviewNote!.isNotEmpty) ...[
+                if (attempt.reviewNote != null &&
+                    attempt.reviewNote!.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: attempt.isApproved ? Colors.green.withValues(alpha: 0.08) : cs.errorContainer,
+                      color: attempt.isApproved
+                          ? Colors.green.withValues(alpha: 0.08)
+                          : cs.errorContainer,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'Reviewer: ${attempt.reviewNote!}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: attempt.isApproved ? Colors.green.shade800 : cs.onErrorContainer,
+                        color: attempt.isApproved
+                            ? Colors.green.shade800
+                            : cs.onErrorContainer,
                       ),
                     ),
                   ),
@@ -901,7 +977,10 @@ class _AttemptsHistoryDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
       ],
     );
   }

@@ -8,9 +8,14 @@
 class SupabaseConfig {
   SupabaseConfig._();
 
-  static const String url = 'https://eafefastkvyeufajjukv.supabase.co';
+  static const String url = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://eafefastkvyeufajjukv.supabase.co',
+  );
 
   /// Public / anon key — safe to include in client apps.
-  static const String anonKey =
-      'sb_publishable_zaD-1UM4FZSc7BKCYUoXww_WST6HOTN';
+  static const String anonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'sb_publishable_zaD-1UM4FZSc7BKCYUoXww_WST6HOTN',
+  );
 }

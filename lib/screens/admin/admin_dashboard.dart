@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
-import '../../providers/competition_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/user_management_provider.dart';
 
 /// Full operational Admin Dashboard for multi-branch network control,
-/// user governance, product catalog, competitions, and org-wide reporting.
+/// user governance, analytics products, and org-wide reporting.
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -28,7 +27,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       context.read<BranchProvider>().loadBranches(),
       context.read<UserManagementProvider>().loadUsers(),
       context.read<ProductProvider>().loadProducts(),
-      context.read<CompetitionProvider>().loadCompetitions(),
       context.read<NotificationProvider>().loadNotifications(),
     ]);
   }
@@ -57,8 +55,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     icon: const Icon(Icons.notifications_outlined),
                     tooltip: 'Notifications',
                     onPressed: () {
-                      Navigator.pushNamed(context, '/notifications')
-                          .then((_) => notifProvider.loadNotifications());
+                      Navigator.pushNamed(
+                        context,
+                        '/notifications',
+                      ).then((_) => notifProvider.loadNotifications());
                     },
                   ),
                   if (unread > 0)
@@ -71,7 +71,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           color: Colors.red,
                           shape: BoxShape.circle,
                         ),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
                         child: Text(
                           unread > 9 ? '9+' : '$unread',
                           style: const TextStyle(
@@ -100,12 +103,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ],
       ),
-      body: Consumer4<BranchProvider, UserManagementProvider, ProductProvider, CompetitionProvider>(
-        builder: (context, branchProvider, userProvider, prodProvider, compProvider, _) {
+      body: Consumer3<BranchProvider, UserManagementProvider, ProductProvider>(
+        builder: (context, branchProvider, userProvider, prodProvider, _) {
           final totalBranches = branchProvider.branches.length;
+          final activeBranches = branchProvider.activeBranches.length;
           final totalUsers = userProvider.users.length;
-          final totalProducts = prodProvider.products.length;
-          final activeCompetitions = compProvider.activeCompetitions.length;
+          final activeUsers = userProvider.users
+              .where((user) => user.isActive)
+              .length;
+          final staffedBranches = branchProvider.branches
+              .where((branch) => branch.managerId != null)
+              .length;
+          final managerCoverage = totalBranches == 0
+              ? 0
+              : (staffedBranches / totalBranches * 100).round();
 
           return RefreshIndicator(
             onRefresh: _loadData,
@@ -137,8 +148,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 26,
-                                backgroundColor: colorScheme.onPrimary.withValues(alpha: 0.2),
-                                child: Icon(Icons.admin_panel_settings, size: 30, color: colorScheme.onPrimary),
+                                backgroundColor: colorScheme.onPrimary
+                                    .withValues(alpha: 0.2),
+                                child: Icon(
+                                  Icons.admin_panel_settings,
+                                  size: 30,
+                                  color: colorScheme.onPrimary,
+                                ),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -155,9 +171,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Managing all branches, staff, and inter-store challenges',
+                                      'Managing all branches, staff, pricing, and branch operations',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.85),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.85,
+                                        ),
                                         fontSize: 13,
                                       ),
                                     ),
@@ -169,14 +187,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         const SizedBox(height: 16),
 
+                        Text(
+                          'Business KPIs',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 12),
+
                         // Stats Grid Row
                         Row(
                           children: [
                             Expanded(
                               child: _AdminStatCard(
                                 icon: Icons.store,
-                                label: 'Branches',
-                                value: '$totalBranches',
+                                label: 'Active Branches',
+                                value: '$activeBranches/$totalBranches',
                                 color: colorScheme.primary,
                               ),
                             ),
@@ -184,8 +209,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             Expanded(
                               child: _AdminStatCard(
                                 icon: Icons.people_alt_outlined,
-                                label: 'Accounts',
-                                value: '$totalUsers',
+                                label: 'Active Staff',
+                                value: '$activeUsers/$totalUsers',
                                 color: Colors.teal,
                               ),
                             ),
@@ -193,18 +218,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             Expanded(
                               child: _AdminStatCard(
                                 icon: Icons.emoji_events_outlined,
-                                label: 'Challenges',
-                                value: '$activeCompetitions',
+                                label: 'Manager Coverage',
+                                value: '$managerCoverage%',
                                 color: Colors.deepOrange,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _AdminStatCard(
-                                icon: Icons.inventory_2_outlined,
-                                label: 'Products',
-                                value: '$totalProducts',
-                                color: Colors.indigo,
                               ),
                             ),
                           ],
@@ -214,49 +230,86 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         // Management Modules
                         Text(
                           'Administration & Governance',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 12),
                         _DashboardTile(
                           icon: Icons.store_outlined,
                           title: 'Multi-Branch Management',
-                          subtitle: 'Create store locations, set managers, and toggle status',
+                          subtitle:
+                              'Create store locations, set managers, and toggle status',
                           color: colorScheme.primary,
-                          onTap: () => Navigator.pushNamed(context, '/branch-management').then((_) => _loadData()),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/branch-management',
+                          ).then((_) => _loadData()),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
                           icon: Icons.manage_accounts_outlined,
                           title: 'User & Role Management',
-                          subtitle: 'Assign Employee, Manager, Admin roles and branch assignments',
+                          subtitle:
+                              'Assign Employee, Manager, Admin roles and branch assignments',
                           color: Colors.teal,
-                          onTap: () => Navigator.pushNamed(context, '/user-management').then((_) => _loadData()),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/user-management',
+                          ).then((_) => _loadData()),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
-                          icon: Icons.emoji_events_outlined,
-                          title: 'Inter-Branch Competitions',
-                          subtitle: 'Create product sales challenges and inspect leaderboards',
-                          color: Colors.deepOrange,
-                          onTap: () => Navigator.pushNamed(context, '/competitions').then((_) => _loadData()),
+                          icon: Icons.cloud_upload_outlined,
+                          title: 'Sales Data Import',
+                          subtitle:
+                              'Admin-only CSV ingestion with duplicate controls',
+                          color: const Color(0xFF00838F),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/sales-import',
+                          ).then((_) => _loadData()),
+                        ),
+                        const SizedBox(height: 10),
+                        _DashboardTile(
+                          icon: Icons.event_available_outlined,
+                          title: 'Attendance Overview',
+                          subtitle: 'Review company-wide attendance and branch attendance summaries',
+                          color: Colors.green,
+                          onTap: () => Navigator.pushNamed(context, '/attendance')
+                              .then((_) => _loadData()),
+                        ),
+                        const SizedBox(height: 10),
+                        _DashboardTile(
+                          icon: Icons.track_changes_outlined,
+                          title: 'Sales Target Governance',
+                          subtitle:
+                              'Set branch and shift goals used in performance KPIs',
+                          color: const Color(0xFFEF6C00),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/sales-targets',
+                          ).then((_) => _loadData()),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
                           icon: Icons.analytics_outlined,
                           title: 'Organization Analytics & Reports',
-                          subtitle: 'Branch revenue comparisons, product performance, and badge counts',
+                          subtitle:
+                              'Branch revenue comparisons, product performance, and badge counts',
                           color: Colors.indigo,
                           onTap: () => Navigator.pushNamed(context, '/reports'),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
-                          icon: Icons.inventory_2_outlined,
-                          title: 'Product Catalog Management',
-                          subtitle: 'Add, update pricing, and categorize products',
+                          icon: Icons.price_change_outlined,
+                          title: 'Product Price Management',
+                          subtitle:
+                              'Maintain pricing and review historical price changes',
                           color: colorScheme.secondary,
-                          onTap: () => Navigator.pushNamed(context, '/products').then((_) => _loadData()),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/products',
+                          ).then((_) => _loadData()),
                         ),
                       ],
                     ),
@@ -350,11 +403,7 @@ class _DashboardTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        subtitle: Text(
-          subtitle,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
+        subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
         trailing: Icon(
           Icons.chevron_right,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),

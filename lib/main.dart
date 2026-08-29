@@ -3,10 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/supabase_config.dart';
+import 'providers/attendance_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/branch_provider.dart';
-import 'providers/competition_provider.dart';
+import 'providers/issue_provider.dart';
+import 'providers/leave_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/points_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/reports_provider.dart';
 import 'providers/sales_provider.dart';
@@ -17,15 +20,17 @@ import 'providers/user_management_provider.dart';
 // Screens
 import 'screens/admin/admin_dashboard.dart';
 import 'screens/admin/branch_management_screen.dart';
-import 'screens/admin/competition_form_screen.dart';
+import 'screens/admin/sales_import_screen.dart';
 import 'screens/admin/user_management_screen.dart';
+import 'screens/attendance/attendance_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/registration_screen.dart';
-import 'screens/competitions/competition_detail_screen.dart';
-import 'screens/competitions/competition_list_screen.dart';
 import 'screens/employee/employee_dashboard.dart';
+import 'screens/employee/my_schedule_screen.dart';
 import 'screens/employee/my_tasks_screen.dart';
-import 'screens/employee/sales_entry_screen.dart';
+import 'screens/employee/points_history_screen.dart';
+import 'screens/issues/issue_report_screen.dart';
+import 'screens/leave/leave_request_screen.dart';
 import 'screens/manager/assign_task_screen.dart';
 import 'screens/manager/assigned_tasks_screen.dart';
 import 'screens/manager/manager_dashboard.dart';
@@ -58,14 +63,17 @@ class RetailFlowApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AttendanceProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
         ChangeNotifierProvider(create: (_) => ShiftProvider()),
         ChangeNotifierProvider(create: (_) => SalesProvider()),
         ChangeNotifierProvider(create: (_) => BranchProvider()),
         ChangeNotifierProvider(create: (_) => UserManagementProvider()),
-        ChangeNotifierProvider(create: (_) => CompetitionProvider()),
+        ChangeNotifierProvider(create: (_) => IssueProvider()),
+        ChangeNotifierProvider(create: (_) => LeaveProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => PointsProvider()),
         ChangeNotifierProvider(create: (_) => ReportsProvider()),
       ],
       child: MaterialApp(
@@ -85,16 +93,15 @@ class RetailFlowApp extends StatelessWidget {
             ),
           ),
           inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -117,90 +124,90 @@ class RetailFlowApp extends StatelessWidget {
         ),
         // Startup screen checks for an existing session and routes accordingly
         home: const _AppStartupScreen(),
-        onGenerateRoute: (settings) {
-          if (settings.name == '/competition-detail') {
-            final compId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (ctx) => _RouteGuard(
-                requiredRoles: const {'manager', 'admin'},
-                child: CompetitionDetailScreen(competitionId: compId),
-              ),
-            );
-          }
-          return null;
-        },
         routes: {
-          '/login':              (ctx) => const LoginScreen(),
-          '/register':           (ctx) => const RegistrationScreen(),
+          '/login': (ctx) => const LoginScreen(),
+          '/register': (ctx) => const RegistrationScreen(),
           '/employee-dashboard': (ctx) => const EmployeeDashboardScreen(),
-          '/my-tasks':           (ctx) => const MyTasksScreen(),
-          '/sales-entry':        (ctx) => const _RouteGuard(
-            requiredRoles: {'employee'},
-            child: SalesEntryScreen(),
+          '/my-tasks': (ctx) => const MyTasksScreen(),
+          '/points-history': (ctx) => const _RouteGuard(
+            requiredRoles: {'employee', 'manager', 'admin'},
+            child: PointsHistoryScreen(),
           ),
-          '/notifications':      (ctx) => const _RouteGuard(
+          '/my-schedule': (ctx) => const _RouteGuard(
+            requiredRoles: {'employee', 'manager', 'admin'},
+            child: MyScheduleScreen(),
+          ),
+          '/notifications': (ctx) => const _RouteGuard(
             requiredRoles: {'employee', 'manager', 'admin'},
             child: NotificationCenterScreen(),
           ),
-          '/products':           (ctx) => const _RouteGuard(
+          '/products': (ctx) => const _RouteGuard(
             requiredRoles: {'employee', 'manager', 'admin'},
             child: ProductListScreen(),
           ),
-          '/reports':            (ctx) => const _RouteGuard(
+          '/issues': (ctx) => const _RouteGuard(
+            requiredRoles: {'employee', 'manager', 'admin'},
+            child: IssueReportScreen(),
+          ),
+          '/leave-requests': (ctx) => const _RouteGuard(
+            requiredRoles: {'employee', 'manager', 'admin'},
+            child: LeaveRequestScreen(),
+          ),
+          '/reports': (ctx) => const _RouteGuard(
             requiredRoles: {'employee', 'manager', 'admin'},
             child: ReportsScreen(),
           ),
-          '/competitions':       (ctx) => const _RouteGuard(
+          '/attendance': (ctx) => const _RouteGuard(
             requiredRoles: {'employee', 'manager', 'admin'},
-            child: CompetitionListScreen(),
+            child: AttendanceScreen(),
           ),
           // Manager-level routes
-          '/manager-dashboard':  (ctx) => const _RouteGuard(
+          '/manager-dashboard': (ctx) => const _RouteGuard(
             requiredRoles: {'manager', 'admin'},
             child: ManagerDashboardScreen(),
           ),
-          '/assign-task':        (ctx) => const _RouteGuard(
+          '/assign-task': (ctx) => const _RouteGuard(
             requiredRoles: {'manager', 'admin'},
             child: AssignTaskScreen(),
           ),
-          '/assigned-tasks':     (ctx) => const _RouteGuard(
+          '/assigned-tasks': (ctx) => const _RouteGuard(
             requiredRoles: {'manager', 'admin'},
             child: AssignedTasksScreen(),
           ),
-          '/task-templates':     (ctx) => const _RouteGuard(
+          '/task-templates': (ctx) => const _RouteGuard(
             requiredRoles: {'manager', 'admin'},
             child: TaskTemplateScreen(),
           ),
-          '/shift-management':   (ctx) => const _RouteGuard(
+          '/shift-management': (ctx) => const _RouteGuard(
             requiredRoles: {'manager', 'admin'},
             child: ShiftManagementScreen(),
           ),
-          '/sales-targets':      (ctx) => const _RouteGuard(
-            requiredRoles: {'manager', 'admin'},
-            child: SalesTargetScreen(),
-          ),
-          '/sales-performance':  (ctx) => const _RouteGuard(
+          '/sales-performance': (ctx) => const _RouteGuard(
             requiredRoles: {'manager', 'admin'},
             child: SalesPerformanceScreen(),
           ),
           // Admin-only routes
-          '/admin-dashboard':    (ctx) => const _RouteGuard(
+          '/admin-dashboard': (ctx) => const _RouteGuard(
             requiredRoles: {'admin'},
             child: AdminDashboardScreen(),
           ),
-          '/branch-management':  (ctx) => const _RouteGuard(
+          '/branch-management': (ctx) => const _RouteGuard(
             requiredRoles: {'admin'},
             child: BranchManagementScreen(),
           ),
-          '/user-management':    (ctx) => const _RouteGuard(
+          '/user-management': (ctx) => const _RouteGuard(
             requiredRoles: {'admin'},
             child: UserManagementScreen(),
           ),
-          '/competition-form':   (ctx) => const _RouteGuard(
-            requiredRoles: {'admin'},
-            child: CompetitionFormScreen(),
+          '/sales-targets': (ctx) => const _RouteGuard(
+            requiredRoles: {'manager', 'admin'},
+            child: SalesTargetScreen(),
           ),
-          '/product-form':       (ctx) => const _RouteGuard(
+          '/sales-import': (ctx) => const _RouteGuard(
+            requiredRoles: {'admin'},
+            child: SalesImportScreen(),
+          ),
+          '/product-form': (ctx) => const _RouteGuard(
             requiredRoles: {'manager', 'admin'},
             child: ProductFormScreen(),
           ),
@@ -327,10 +334,7 @@ class _RouteGuard extends StatelessWidget {
   final Set<String> requiredRoles;
   final Widget child;
 
-  const _RouteGuard({
-    required this.requiredRoles,
-    required this.child,
-  });
+  const _RouteGuard({required this.requiredRoles, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -344,16 +348,14 @@ class _RouteGuard extends StatelessWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!context.mounted) return;
       final destination = switch (role) {
-        'admin'   => '/admin-dashboard',
+        'admin' => '/admin-dashboard',
         'manager' => '/manager-dashboard',
-        _         => '/employee-dashboard',
+        _ => '/employee-dashboard',
       };
       Navigator.pushReplacementNamed(context, destination);
     });
 
     // Show spinner while redirecting
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

@@ -34,11 +34,14 @@ class StorageService {
     try {
       final bytes = await file.readAsBytes();
       final extension = file.name.split('.').last.toLowerCase();
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_')}';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${file.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_')}';
       final storagePath = '$userId/$assignmentId/$fileName';
 
       // Upload to bucket
-      await _supabase.storage.from(taskPhotosBucket).uploadBinary(
+      await _supabase.storage
+          .from(taskPhotosBucket)
+          .uploadBinary(
             storagePath,
             bytes,
             fileOptions: FileOptions(
@@ -47,7 +50,7 @@ class StorageService {
             ),
           );
 
-        return await _supabase.storage
+      return await _supabase.storage
           .from(taskPhotosBucket)
           .createSignedUrl(storagePath, 3600);
     } catch (e) {

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import '../models/branch.dart';
 import '../models/user_profile.dart';
 import '../services/branch_service.dart';
@@ -13,7 +14,8 @@ class BranchProvider extends ChangeNotifier {
   String? _errorMessage;
 
   List<Branch> get branches => _branches;
-  List<Branch> get activeBranches => _branches.where((b) => b.isActive).toList();
+  List<Branch> get activeBranches =>
+      _branches.where((b) => b.isActive).toList();
   List<UserProfile> get eligibleManagers => _eligibleManagers;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -25,7 +27,7 @@ class BranchProvider extends ChangeNotifier {
     try {
       _branches = await _branchService.fetchAllBranches();
     } catch (e) {
-      _errorMessage = 'Failed to load branches.';
+      _errorMessage = _displayError(e, fallback: 'Failed to load branches.');
       debugPrint('Load branches error: $e');
     } finally {
       _isLoading = false;
@@ -38,7 +40,12 @@ class BranchProvider extends ChangeNotifier {
       _eligibleManagers = await _branchService.fetchEligibleManagers();
       notifyListeners();
     } catch (e) {
+      _errorMessage = _displayError(
+        e,
+        fallback: 'Failed to load eligible managers.',
+      );
       debugPrint('Load eligible managers error: $e');
+      notifyListeners();
     }
   }
 
@@ -57,8 +64,9 @@ class BranchProvider extends ChangeNotifier {
         managerId: managerId,
       );
       _branches = [branch, ..._branches];
+      await loadEligibleManagers();
     } catch (e) {
-      _errorMessage = 'Failed to create branch.';
+      _errorMessage = _displayError(e, fallback: 'Failed to create branch.');
       debugPrint('Create branch error: $e');
       rethrow;
     } finally {
@@ -86,13 +94,23 @@ class BranchProvider extends ChangeNotifier {
         isActive: isActive,
       );
       _branches = _branches.map((b) => b.id == id ? updated : b).toList();
+      await loadEligibleManagers();
     } catch (e) {
-      _errorMessage = 'Failed to update branch.';
+      _errorMessage = _displayError(e, fallback: 'Failed to update branch.');
       debugPrint('Update branch error: $e');
       rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  String _displayError(Object error, {required String fallback}) {
+    if (error is BranchManagementException) return error.message;
+    final value = error.toString().trim();
+    if (value.startsWith('Exception: ')) {
+      return value.substring('Exception: '.length);
+    }
+    return value.isEmpty ? fallback : value;
   }
 }

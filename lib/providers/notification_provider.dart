@@ -58,16 +58,20 @@ class NotificationProvider extends ChangeNotifier {
   Future<void> markAllAsRead() async {
     try {
       await _notificationService.markAllAsRead();
-      _notifications = _notifications.map((n) => AppNotification(
-            id: n.id,
-            userId: n.userId,
-            type: n.type,
-            title: n.title,
-            message: n.message,
-            data: n.data,
-            isRead: true,
-            createdAt: n.createdAt,
-          )).toList();
+      _notifications = _notifications
+          .map(
+            (n) => AppNotification(
+              id: n.id,
+              userId: n.userId,
+              type: n.type,
+              title: n.title,
+              message: n.message,
+              data: n.data,
+              isRead: true,
+              createdAt: n.createdAt,
+            ),
+          )
+          .toList();
       notifyListeners();
     } catch (e) {
       debugPrint('Mark all read error: $e');

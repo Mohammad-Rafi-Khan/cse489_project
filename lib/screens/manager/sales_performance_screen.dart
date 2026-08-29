@@ -10,8 +10,7 @@ class SalesPerformanceScreen extends StatefulWidget {
   const SalesPerformanceScreen({super.key});
 
   @override
-  State<SalesPerformanceScreen> createState() =>
-      _SalesPerformanceScreenState();
+  State<SalesPerformanceScreen> createState() => _SalesPerformanceScreenState();
 }
 
 class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
@@ -32,7 +31,8 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
     final salesProvider = context.read<SalesProvider>();
     await Future.wait([
       salesProvider.loadTargets(branchId, _startDate, _endDate),
-      salesProvider.loadEntriesForRange(branchId, _startDate, _endDate),
+      salesProvider.loadImportsForRange(branchId, _startDate, _endDate),
+      salesProvider.loadPerformanceForRange(branchId, _startDate, _endDate),
     ]);
   }
 
@@ -78,15 +78,19 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
       body: Consumer<SalesProvider>(
         builder: (context, salesProvider, _) {
           if (salesProvider.isLoading &&
-              salesProvider.rangeEntries.isEmpty &&
+              salesProvider.rangeImports.isEmpty &&
               salesProvider.targets.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final totalActual = salesProvider.rangeEntries.fold(
-              0.0, (sum, entry) => sum + entry.totalAmount);
-          final totalTarget = salesProvider.targets.fold(
-              0.0, (sum, target) => sum + target.targetAmount);
+          final totalActual = salesProvider.rangePerformance.fold<double>(
+            0.0,
+            (sum, row) => sum + ((row['actual'] as num?)?.toDouble() ?? 0),
+          );
+          final totalTarget = salesProvider.rangePerformance.fold<double>(
+            0.0,
+            (sum, row) => sum + ((row['target'] as num?)?.toDouble() ?? 0),
+          );
 
           final progress = totalTarget > 0 ? (totalActual / totalTarget) : 0.0;
           final percent = (progress * 100).clamp(0, 999).toStringAsFixed(1);
@@ -107,28 +111,39 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                         // Date range chip banner
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.calendar_today_outlined,
-                                      size: 16, color: colorScheme.primary),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${dateFormatter.format(_startDate)} – ${dateFormatter.format(_endDate)}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.calendar_today_outlined,
+                                      size: 16,
+                                      color: colorScheme.primary,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '${dateFormatter.format(_startDate)} - ${dateFormatter.format(_endDate)}',
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               TextButton(
                                 onPressed: _pickDateRange,
                                 child: const Text('Change'),
@@ -159,17 +174,21 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                                           .textTheme
                                           .titleMedium
                                           ?.copyWith(
-                                              fontWeight: FontWeight.bold),
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                     ),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 4),
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: progress >= 1.0
-                                            ? Colors.green.withOpacity(0.15)
+                                            ? Colors.green.withValues(
+                                                alpha: 0.15,
+                                              )
                                             : colorScheme.primaryContainer,
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
                                         '$percent% Target',
@@ -192,8 +211,8 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                                         ? progress.clamp(0.0, 1.0)
                                         : 0.0,
                                     minHeight: 12,
-                                    backgroundColor: colorScheme
-                                        .surfaceContainerHighest,
+                                    backgroundColor:
+                                        colorScheme.surfaceContainerHighest,
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       progress >= 1.0
                                           ? Colors.green
@@ -207,7 +226,8 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                                     Expanded(
                                       child: _KpiMetric(
                                         label: 'Actual Sales',
-                                        value: '৳${currency.format(totalActual)}',
+                                        value:
+                                            'BDT ${currency.format(totalActual)}',
                                         color: colorScheme.primary,
                                         icon: Icons.trending_up_rounded,
                                       ),
@@ -215,12 +235,15 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                                     Container(
                                       width: 1,
                                       height: 48,
-                                      color: colorScheme.outline.withOpacity(0.2),
+                                      color: colorScheme.outline.withValues(
+                                        alpha: 0.2,
+                                      ),
                                     ),
                                     Expanded(
                                       child: _KpiMetric(
                                         label: 'Target Goal',
-                                        value: '৳${currency.format(totalTarget)}',
+                                        value:
+                                            'BDT ${currency.format(totalTarget)}',
                                         color: Colors.deepOrange,
                                         icon: Icons.flag_outlined,
                                       ),
@@ -236,9 +259,7 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                         // Shift Performance Breakdown
                         Text(
                           'Performance by Shift',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
+                          style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 10),
@@ -248,9 +269,11 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                               padding: const EdgeInsets.all(24),
                               child: Center(
                                 child: Text(
-                                  'No sales entries recorded for this range.',
+                                  'No imported sales data for this range.',
                                   style: TextStyle(
-                                    color: colorScheme.onSurface.withOpacity(0.6),
+                                    color: colorScheme.onSurface.withValues(
+                                      alpha: 0.6,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -303,7 +326,7 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                                           ],
                                         ),
                                         Text(
-                                          '৳${currency.format(amount)}',
+                                          'BDT ${currency.format(amount)}',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
@@ -318,12 +341,12 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                                       child: LinearProgressIndicator(
                                         value: shiftShare.clamp(0.0, 1.0),
                                         minHeight: 6,
-                                        backgroundColor: colorScheme
-                                            .surfaceContainerHighest,
+                                        backgroundColor:
+                                            colorScheme.surfaceContainerHighest,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                          colorScheme.secondary,
-                                        ),
+                                              colorScheme.secondary,
+                                            ),
                                       ),
                                     ),
                                     const SizedBox(height: 6),
@@ -331,8 +354,9 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                                       '${(shiftShare * 100).toStringAsFixed(1)}% of total sales',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.55),
+                                        color: colorScheme.onSurface.withValues(
+                                          alpha: 0.55,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -343,12 +367,10 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
 
                         const SizedBox(height: 20),
 
-                        // Transaction Count & Summary
+                        // Import Count & Summary
                         Text(
-                          'Transaction Summary',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
+                          'Import Summary',
+                          style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 10),
@@ -356,20 +378,18 @@ class _SalesPerformanceScreenState extends State<SalesPerformanceScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceAround,
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 _SummaryStat(
-                                  label: 'Transactions',
-                                  value:
-                                      '${salesProvider.rangeEntries.length}',
+                                  label: 'Imports',
+                                  value: '${salesProvider.rangeImports.length}',
                                   icon: Icons.receipt_long_outlined,
                                 ),
                                 _SummaryStat(
-                                  label: 'Avg Sale',
-                                  value: salesProvider.rangeEntries.isNotEmpty
-                                      ? '৳${currency.format(totalActual / salesProvider.rangeEntries.length)}'
-                                      : '৳0.00',
+                                  label: 'Avg Import',
+                                  value: salesProvider.rangeImports.isNotEmpty
+                                      ? 'BDT ${currency.format(totalActual / salesProvider.rangeImports.length)}'
+                                      : 'BDT 0.00',
                                   icon: Icons.calculate_outlined,
                                 ),
                                 _SummaryStat(
@@ -422,10 +442,9 @@ class _KpiMetric extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withOpacity(0.6),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -468,16 +487,13 @@ class _SummaryStat extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
         ),
         Text(
           label,
           style: TextStyle(
             fontSize: 11,
-            color: colorScheme.onSurface.withOpacity(0.55),
+            color: colorScheme.onSurface.withValues(alpha: 0.55),
           ),
         ),
       ],

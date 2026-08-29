@@ -30,6 +30,7 @@ class _BranchManagementScreenState extends State<BranchManagementScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => _BranchFormSheet(branch: branch),
     ).then((_) {
+      if (!mounted) return;
       context.read<BranchProvider>().loadBranches();
     });
   }
@@ -83,7 +84,10 @@ class _BranchManagementScreenState extends State<BranchManagementScreen> {
                       child: Opacity(
                         opacity: branch.isActive ? 1.0 : 0.6,
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           leading: Container(
                             width: 44,
                             height: 44,
@@ -91,7 +95,10 @@ class _BranchManagementScreenState extends State<BranchManagementScreen> {
                               color: colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(Icons.store, color: colorScheme.primary),
+                            child: Icon(
+                              Icons.store,
+                              color: colorScheme.primary,
+                            ),
                           ),
                           title: Row(
                             children: [
@@ -100,20 +107,28 @@ class _BranchManagementScreenState extends State<BranchManagementScreen> {
                                   branch.name,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    decoration: branch.isActive ? null : TextDecoration.lineThrough,
+                                    decoration: branch.isActive
+                                        ? null
+                                        : TextDecoration.lineThrough,
                                   ),
                                 ),
                               ),
                               if (!branch.isActive)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: colorScheme.errorContainer,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
                                     'Inactive',
-                                    style: TextStyle(color: colorScheme.onErrorContainer, fontSize: 11),
+                                    style: TextStyle(
+                                      color: colorScheme.onErrorContainer,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -185,7 +200,10 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Branch name is required.'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Branch name is required.'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -197,14 +215,18 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
         await provider.updateBranch(
           id: widget.branch!.id,
           name: name,
-          location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+          location: _locationController.text.trim().isEmpty
+              ? null
+              : _locationController.text.trim(),
           managerId: _selectedManagerId,
           isActive: _isActive,
         );
       } else {
         await provider.createBranch(
           name: name,
-          location: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
+          location: _locationController.text.trim().isEmpty
+              ? null
+              : _locationController.text.trim(),
           managerId: _selectedManagerId,
         );
       }
@@ -213,15 +235,24 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isEditing ? 'Branch updated successfully!' : 'Branch created successfully!'),
+            content: Text(
+              _isEditing
+                  ? 'Branch updated successfully!'
+                  : 'Branch created successfully!',
+            ),
             backgroundColor: Colors.green,
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
+        final message =
+            context.read<BranchProvider>().errorMessage ?? error.toString();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save branch.'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -233,9 +264,16 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final managers = context.watch<BranchProvider>().eligibleManagers;
+    final selectedManagerValue = managers.any(
+      (manager) => manager.id == _selectedManagerId,
+    )
+        ? _selectedManagerId
+        : null;
 
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: cs.surface,
@@ -259,7 +297,11 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
             const SizedBox(height: 16),
             Text(
               _isEditing ? 'Edit Branch' : 'New Branch',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: cs.primary),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: cs.primary,
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -269,7 +311,9 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
                 labelText: 'Branch Name *',
                 hintText: 'e.g. Banani Branch',
                 prefixIcon: const Icon(Icons.store),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 14),
@@ -280,25 +324,37 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
                 labelText: 'Location / Address',
                 hintText: 'e.g. Block D, Road 11, Banani',
                 prefixIcon: const Icon(Icons.location_on_outlined),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 14),
             DropdownButtonFormField<String?>(
-              value: _selectedManagerId,
+              initialValue: selectedManagerValue,
               isExpanded: true,
               decoration: InputDecoration(
                 labelText: 'Assigned Manager (optional)',
                 prefixIcon: const Icon(Icons.person_outline),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               hint: const Text('Select a manager'),
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('No manager assigned')),
-                ...managers.map((m) => DropdownMenuItem<String?>(
-                      value: m.id,
-                      child: Text('${m.name} (${m.email})', overflow: TextOverflow.ellipsis),
-                    )),
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('No manager assigned'),
+                ),
+                ...managers.map(
+                  (m) => DropdownMenuItem<String?>(
+                    value: m.id,
+                    child: Text(
+                      '${m.name} (${m.email})',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
               ],
               onChanged: (val) => setState(() => _selectedManagerId = val),
             ),
@@ -306,7 +362,9 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
               const SizedBox(height: 10),
               SwitchListTile(
                 title: const Text('Active Branch'),
-                subtitle: const Text('Inactive branches are hidden from sales and assignment'),
+                subtitle: const Text(
+                  'Inactive branches are hidden from sales and assignment',
+                ),
                 value: _isActive,
                 onChanged: (v) => setState(() => _isActive = v),
                 contentPadding: EdgeInsets.zero,

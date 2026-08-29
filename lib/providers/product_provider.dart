@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/product.dart';
 import '../services/product_service.dart';
 
-/// Manages product list state and all product CRUD operations.
+/// Manages product list state and price-management operations.
 class ProductProvider extends ChangeNotifier {
   final ProductService _productService = ProductService();
 
@@ -10,15 +10,11 @@ class ProductProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // ─── Getters ──────────────────────────────────────────────
-
   List<Product> get products => _products;
   List<Product> get activeProducts =>
       _products.where((p) => p.isActive).toList();
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-
-  // ─── Fetch ────────────────────────────────────────────────
 
   Future<void> loadProducts() async {
     _setLoading(true);
@@ -35,12 +31,10 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  // ─── Add ──────────────────────────────────────────────────
-
   Future<void> addProduct({
     required String name,
     required String category,
-    required double unitPrice,
+    double currentPrice = 0,
   }) async {
     _setLoading(true);
     _clearError();
@@ -48,10 +42,9 @@ class ProductProvider extends ChangeNotifier {
       final newProduct = await _productService.addProduct(
         name: name,
         category: category,
-        unitPrice: unitPrice,
+        currentPrice: currentPrice,
       );
       _products = [newProduct, ..._products];
-      // Re-sort by name to keep list consistent
       _products.sort((a, b) => a.name.compareTo(b.name));
       notifyListeners();
     } catch (e) {
@@ -64,13 +57,11 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  // ─── Edit ─────────────────────────────────────────────────
-
   Future<void> updateProduct({
     required String id,
     required String name,
     required String category,
-    required double unitPrice,
+    double currentPrice = 0,
   }) async {
     _setLoading(true);
     _clearError();
@@ -79,7 +70,7 @@ class ProductProvider extends ChangeNotifier {
         id: id,
         name: name,
         category: category,
-        unitPrice: unitPrice,
+        currentPrice: currentPrice,
       );
       final index = _products.indexWhere((p) => p.id == id);
       if (index != -1) {
@@ -96,7 +87,33 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  // ─── Activate / Deactivate ────────────────────────────────
+  Future<Product> updateProductPrice({
+    required String id,
+    required double newPrice,
+  }) async {
+    _clearError();
+    try {
+      final updated = await _productService.updateProductPrice(
+        id: id,
+        newPrice: newPrice,
+      );
+      final index = _products.indexWhere((p) => p.id == id);
+      if (index != -1) {
+        _products[index] = updated;
+      }
+      notifyListeners();
+      return updated;
+    } catch (e) {
+      _errorMessage = 'Failed to update product price.';
+      debugPrint('Update product price error: $e');
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<List<dynamic>> fetchPriceHistory(String productId) async {
+    return _productService.fetchPriceHistory(productId);
+  }
 
   Future<void> setProductActive({
     required String id,
@@ -118,16 +135,12 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  // ─── Clear ────────────────────────────────────────────────
-
   void clearAll() {
     _products = [];
     _errorMessage = null;
     _isLoading = false;
     notifyListeners();
   }
-
-  // ─── Helpers ──────────────────────────────────────────────
 
   void _setLoading(bool value) {
     _isLoading = value;

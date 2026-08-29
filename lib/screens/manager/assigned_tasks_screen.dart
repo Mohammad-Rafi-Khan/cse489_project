@@ -28,9 +28,9 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
   Future<void> _loadAssignments() async {
     final auth = context.read<AuthProvider>();
     if (auth.profile?.branchId == null) return;
-    await context
-        .read<TaskProvider>()
-        .loadManagerAssignments(auth.profile!.branchId!);
+    await context.read<TaskProvider>().loadManagerAssignments(
+      auth.profile!.branchId!,
+    );
   }
 
   void _openReviewSheet(TaskAssignment assignment) {
@@ -144,8 +144,11 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                             onReview: assignments[index].status == 'completed'
                                 ? () => _openReviewSheet(assignments[index])
                                 : null,
-                            onViewHistory: assignments[index].completions.isNotEmpty
-                                ? () => _showAttemptsHistoryDialog(assignments[index])
+                            onViewHistory:
+                                assignments[index].completions.isNotEmpty
+                                ? () => _showAttemptsHistoryDialog(
+                                    assignments[index],
+                                  )
                                 : null,
                           ),
                         ),
@@ -250,12 +253,18 @@ class _AssignmentCard extends StatelessWidget {
                     assignment.taskTitle ?? 'Task',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
@@ -274,22 +283,36 @@ class _AssignmentCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.person_outline, size: 14, color: cs.onSurface.withValues(alpha: 0.5)),
+                Icon(
+                  Icons.person_outline,
+                  size: 14,
+                  color: cs.onSurface.withValues(alpha: 0.5),
+                ),
                 const SizedBox(width: 5),
                 Flexible(
                   child: Text(
                     assignment.employeeName ?? 'Unknown Employee',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: cs.onSurface.withValues(alpha: 0.7), fontSize: 13),
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.7),
+                      fontSize: 13,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
-                Icon(Icons.calendar_today_outlined, size: 14, color: cs.onSurface.withValues(alpha: 0.5)),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 14,
+                  color: cs.onSurface.withValues(alpha: 0.5),
+                ),
                 const SizedBox(width: 5),
                 Text(
                   dateFormatter.format(assignment.scheduledDate),
-                  style: TextStyle(color: cs.onSurface.withValues(alpha: 0.7), fontSize: 13),
+                  style: TextStyle(
+                    color: cs.onSurface.withValues(alpha: 0.7),
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -311,14 +334,21 @@ class _AssignmentCard extends StatelessWidget {
                       children: [
                         Text(
                           'Attempt #${latest.attemptNumber} Submission',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: cs.primary),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: cs.primary,
+                          ),
                         ),
-                        if (latest.photoUrl != null && latest.photoUrl!.isNotEmpty)
+                        if (latest.photoUrl != null &&
+                            latest.photoUrl!.isNotEmpty)
                           InkWell(
                             onTap: () {
                               showDialog(
                                 context: context,
-                                builder: (_) => _PhotoPreviewDialog(photoUrl: latest.photoUrl!),
+                                builder: (_) => _PhotoPreviewDialog(
+                                  photoUrl: latest.photoUrl!,
+                                ),
                               );
                             },
                             child: Row(
@@ -339,11 +369,15 @@ class _AssignmentCard extends StatelessWidget {
                           ),
                       ],
                     ),
-                    if (latest.completionNote != null && latest.completionNote!.isNotEmpty) ...[
+                    if (latest.completionNote != null &&
+                        latest.completionNote!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         latest.completionNote!,
-                        style: TextStyle(fontSize: 13, color: cs.onSurface.withValues(alpha: 0.8)),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: cs.onSurface.withValues(alpha: 0.8),
+                        ),
                       ),
                     ],
                   ],
@@ -404,10 +438,16 @@ class _PhotoPreviewDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppBar(
-            title: const Text('Photo Proof Evidence', style: TextStyle(fontSize: 16)),
+            title: const Text(
+              'Photo Proof Evidence',
+              style: TextStyle(fontSize: 16),
+            ),
             automaticallyImplyLeading: false,
             actions: [
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
             ],
           ),
           Image.network(
@@ -420,7 +460,7 @@ class _PhotoPreviewDialog extends StatelessWidget {
                 child: Center(child: CircularProgressIndicator()),
               );
             },
-            errorBuilder: (_, __, ___) => const Padding(
+            errorBuilder: (_, _, _) => const Padding(
               padding: EdgeInsets.all(24),
               child: Center(child: Text('Failed to load image from storage.')),
             ),
@@ -437,10 +477,7 @@ class _ReviewSheet extends StatefulWidget {
   final TaskAssignment assignment;
   final TaskCompletion completion;
 
-  const _ReviewSheet({
-    required this.assignment,
-    required this.completion,
-  });
+  const _ReviewSheet({required this.assignment, required this.completion});
 
   @override
   State<_ReviewSheet> createState() => _ReviewSheetState();
@@ -461,7 +498,9 @@ class _ReviewSheetState extends State<_ReviewSheet> {
     if (!approve && note.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please provide a rejection reason so the employee can revise.'),
+          content: Text(
+            'Please provide a rejection reason so the employee can revise.',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -495,9 +534,11 @@ class _ReviewSheetState extends State<_ReviewSheet> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(approve
-                ? 'Task approved! Points successfully awarded.'
-                : 'Task rejected and returned for revision.'),
+            content: Text(
+              approve
+                  ? 'Task approved! Points successfully awarded.'
+                  : 'Task rejected and returned for revision.',
+            ),
             backgroundColor: approve ? Colors.green : Colors.orange,
           ),
         );
@@ -506,7 +547,9 @@ class _ReviewSheetState extends State<_ReviewSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Action failed: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'Action failed: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -548,17 +591,30 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                 children: [
                   Text(
                     'Review Task Submission',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: cs.primary),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: cs.primary,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${widget.assignment.taskTitle ?? 'Task'} · Attempt #${comp.attemptNumber}',
-                    style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.6)),
+                    '${widget.assignment.taskTitle ?? 'Task'} - Attempt #${comp.attemptNumber}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
                   const SizedBox(height: 16),
 
                   if (comp.photoUrl != null && comp.photoUrl!.isNotEmpty) ...[
-                    Text('Photo Proof Evidence', style: TextStyle(fontWeight: FontWeight.bold, color: cs.primary)),
+                    Text(
+                      'Photo Proof Evidence',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: cs.primary,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -572,8 +628,15 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                     const SizedBox(height: 16),
                   ],
 
-                  if (comp.completionNote != null && comp.completionNote!.isNotEmpty) ...[
-                    Text('Employee Note:', style: TextStyle(fontWeight: FontWeight.w600, color: cs.onSurface)),
+                  if (comp.completionNote != null &&
+                      comp.completionNote!.isNotEmpty) ...[
+                    Text(
+                      'Employee Note:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurface,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Container(
                       width: double.infinity,
@@ -594,7 +657,9 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                       labelText: 'Review Note (required for rejection)',
                       hintText: 'Add comments or reason for decision...',
                       prefixIcon: const Icon(Icons.comment_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       alignLabelWithHint: true,
                     ),
                   ),
@@ -604,11 +669,16 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                       Expanded(
                         child: OutlinedButton.icon(
                           icon: const Icon(Icons.close, color: Colors.red),
-                          label: const Text('Reject', style: TextStyle(color: Colors.red)),
+                          label: const Text(
+                            'Reject',
+                            style: TextStyle(color: Colors.red),
+                          ),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Colors.red),
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           onPressed: _isSubmitting ? null : () => _act(false),
                         ),
@@ -620,15 +690,22 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
                                 )
                               : const Icon(Icons.check_circle),
-                          label: Text(_isSubmitting ? 'Saving...' : 'Approve & Award'),
+                          label: Text(
+                            _isSubmitting ? 'Saving...' : 'Approve & Award',
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           onPressed: _isSubmitting ? null : () => _act(true),
                         ),
@@ -669,7 +746,7 @@ class _AttemptsHistoryDialog extends StatelessWidget {
         child: ListView.separated(
           shrinkWrap: true,
           itemCount: attempts.length,
-          separatorBuilder: (_, __) => const Divider(height: 24),
+          separatorBuilder: (_, _) => const Divider(height: 24),
           itemBuilder: (context, index) {
             final attempt = attempts[index];
             final statusColor = attempt.isApproved
@@ -684,10 +761,16 @@ class _AttemptsHistoryDialog extends StatelessWidget {
                   children: [
                     Text(
                       'Attempt #${attempt.attemptNumber}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
@@ -706,20 +789,30 @@ class _AttemptsHistoryDialog extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Submitted: ${DateFormat('dd MMM yyyy, h:mm a').format(attempt.submittedAt.toLocal())}',
-                  style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.6)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: cs.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
-                if (attempt.completionNote != null && attempt.completionNote!.isNotEmpty) ...[
+                if (attempt.completionNote != null &&
+                    attempt.completionNote!.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text('Note: ${attempt.completionNote!}', style: const TextStyle(fontSize: 13)),
+                  Text(
+                    'Note: ${attempt.completionNote!}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
                 ],
-                if (attempt.reviewNote != null && attempt.reviewNote!.isNotEmpty) ...[
+                if (attempt.reviewNote != null &&
+                    attempt.reviewNote!.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Review note: ${attempt.reviewNote!}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: attempt.isApproved ? Colors.green.shade800 : cs.error,
+                      color: attempt.isApproved
+                          ? Colors.green.shade800
+                          : cs.error,
                     ),
                   ),
                 ],
@@ -729,7 +822,10 @@ class _AttemptsHistoryDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
       ],
     );
   }

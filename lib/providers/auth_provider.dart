@@ -56,7 +56,9 @@ class AuthProvider extends ChangeNotifier {
       _profile = result.profile;
       notifyListeners();
       return result.hasSession;
-    } on Exception catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Registration error: $e');
+      debugPrintStack(stackTrace: stackTrace);
       _errorMessage = _friendlyError(e.toString());
       notifyListeners();
       rethrow;
@@ -67,17 +69,11 @@ class AuthProvider extends ChangeNotifier {
 
   // ─── Login ────────────────────────────────────────────────
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     _setLoading(true);
     _clearError();
     try {
-      _profile = await _authService.signIn(
-        email: email,
-        password: password,
-      );
+      _profile = await _authService.signIn(email: email, password: password);
       if (_profile != null && !_profile!.isActive) {
         await _authService.signOut();
         _profile = null;
@@ -87,7 +83,9 @@ class AuthProvider extends ChangeNotifier {
         throw Exception(_errorMessage);
       }
       notifyListeners();
-    } on Exception catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Login error: $e');
+      debugPrintStack(stackTrace: stackTrace);
       _errorMessage = _friendlyError(e.toString());
       notifyListeners();
       rethrow;
@@ -130,7 +128,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-
   // ─── Helpers ──────────────────────────────────────────────
 
   void _setLoading(bool value) {
@@ -164,8 +161,26 @@ class AuthProvider extends ChangeNotifier {
     if (lower.contains('email not confirmed')) {
       return 'Please confirm your email before logging in.';
     }
+    if (lower.contains('pgrst201') ||
+        lower.contains('ambiguous') ||
+        lower.contains('more than one relationship') ||
+        lower.contains('schema cache') ||
+        lower.contains('could not find a relationship')) {
+      return 'The database relationship metadata is out of sync. Rerun the latest setup.sql, wait a few seconds, then fully restart the app.';
+    }
+    if (lower.contains('no retailflow profile')) {
+      return 'Login succeeded, but this account has no RetailFlow profile. Run the profile backfill SQL in Supabase, then try again.';
+    }
+    if (lower.contains('permission denied') ||
+        lower.contains('row-level security') ||
+        lower.contains('rls')) {
+      return 'Your account profile is blocked by database permissions. Please rerun the latest setup.sql in Supabase.';
+    }
     if (lower.contains('deactivated')) {
       return raw;
+    }
+    if (kDebugMode) {
+      return 'Unexpected login error: $raw';
     }
     return 'Something went wrong. Please try again.';
   }

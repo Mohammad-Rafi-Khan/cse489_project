@@ -34,12 +34,20 @@ class ReportsProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadManagerReport(String branchId, DateTime from, DateTime to) async {
+  Future<void> loadManagerReport(
+    String branchId,
+    DateTime from,
+    DateTime to,
+  ) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      _managerReport = await _reportsService.fetchManagerReport(branchId, from, to);
+      _managerReport = await _reportsService.fetchManagerReport(
+        branchId,
+        from,
+        to,
+      );
     } catch (e) {
       _errorMessage = 'Failed to load branch report.';
       debugPrint('Manager report error: $e');

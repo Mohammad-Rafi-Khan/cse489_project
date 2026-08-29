@@ -1,36 +1,34 @@
 import 'package:flutter/foundation.dart';
+import '../models/sales_import_failure.dart';
+import '../models/sales_import.dart';
 import '../models/sales_target.dart';
-import '../models/sales_entry.dart';
 import '../services/sales_service.dart';
 
-/// Manages sales targets, sales entries, and performance data state.
+/// Manages sales targets, imported sales data, and performance state.
 class SalesProvider extends ChangeNotifier {
   final SalesService _salesService = SalesService();
 
   List<SalesTarget> _targets = [];
-  List<SalesEntry> _entries = [];
-  List<SalesEntry> _rangeEntries = [];
+  List<SalesImport> _imports = [];
+  List<SalesImportFailure> _importFailures = [];
+  List<SalesImport> _rangeImports = [];
+  List<Map<String, dynamic>> _rangePerformance = [];
   bool _isLoading = false;
   String? _errorMessage;
 
   List<SalesTarget> get targets => _targets;
-  List<SalesEntry> get entries => _entries;
-  List<SalesEntry> get rangeEntries => _rangeEntries;
+  List<SalesImport> get imports => _imports;
+  List<SalesImportFailure> get importFailures => _importFailures;
+  List<SalesImport> get rangeImports => _rangeImports;
+  List<Map<String, dynamic>> get rangePerformance => _rangePerformance;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  /// Total sales amount for the currently loaded entries.
-  double get totalActual =>
-      _entries.fold(0, (sum, e) => sum + e.totalAmount);
+  double get totalActual => _imports.fold(0, (sum, e) => sum + e.totalAmount);
 
-  /// Total target for the currently loaded targets.
-  double get totalTarget =>
-      _targets.fold(0, (sum, t) => sum + t.targetAmount);
+  double get totalTarget => _targets.fold(0, (sum, t) => sum + t.targetAmount);
 
-  // ─── Targets ──────────────────────────────────────────────
-
-  Future<void> loadTargets(
-      String branchId, DateTime from, DateTime to) async {
+  Future<void> loadTargets(String branchId, DateTime from, DateTime to) async {
     _setLoading(true);
     _clearError();
     try {
@@ -77,66 +75,99 @@ class SalesProvider extends ChangeNotifier {
     }
   }
 
-  // ─── Entries ──────────────────────────────────────────────
-
-  Future<void> loadEntriesForDate(String branchId, DateTime date) async {
+  Future<void> loadImportsForDate(String branchId, DateTime date) async {
     _setLoading(true);
     _clearError();
     try {
-      _entries = await _salesService.fetchEntriesForDate(branchId, date);
+      _imports = await _salesService.fetchImportsForDate(branchId, date);
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'Failed to load sales entries.';
-      debugPrint('Load entries error: $e');
+      _errorMessage = 'Failed to load imported sales data.';
+      debugPrint('Load sales imports error: $e');
       notifyListeners();
     } finally {
       _setLoading(false);
     }
   }
 
-  Future<void> loadEntriesForRange(
-      String branchId, DateTime from, DateTime to) async {
+  Future<void> loadImportFailuresForDate(String branchId, DateTime date) async {
+    try {
+      _importFailures = await _salesService.fetchImportFailuresForDate(
+        branchId,
+        date,
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Load import failures error: $e');
+    }
+  }
+
+  Future<void> loadImportsForRange(
+    String branchId,
+    DateTime from,
+    DateTime to,
+  ) async {
     _setLoading(true);
     _clearError();
     try {
-      _rangeEntries =
-          await _salesService.fetchEntriesForRange(branchId, from, to);
+      _rangeImports = await _salesService.fetchImportsForRange(
+        branchId,
+        from,
+        to,
+      );
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'Failed to load sales data.';
-      debugPrint('Load range entries error: $e');
+      _errorMessage = 'Failed to load imported sales data.';
+      debugPrint('Load range imports error: $e');
       notifyListeners();
     } finally {
       _setLoading(false);
     }
   }
 
-  Future<void> recordSale({
+  Future<void> loadPerformanceForRange(
+    String branchId,
+    DateTime from,
+    DateTime to,
+  ) async {
+    try {
+      _rangePerformance = await _salesService.fetchPerformanceForRange(
+        branchId,
+        from,
+        to,
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Load performance error: $e');
+    }
+  }
+
+  Future<void> importSalesData({
     required String branchId,
     String? shiftId,
     required DateTime saleDate,
-    required String employeeId,
-    required String productId,
-    required int quantity,
-    required double unitPrice,
+    required double totalAmount,
+    String? externalReference,
+    String? productId,
+    int? productQuantity,
   }) async {
     _setLoading(true);
     _clearError();
     try {
-      final entry = await _salesService.recordSale(
+      final imported = await _salesService.importSalesData(
         branchId: branchId,
         shiftId: shiftId,
         saleDate: saleDate,
-        employeeId: employeeId,
+        totalAmount: totalAmount,
+        externalReference: externalReference,
         productId: productId,
-        quantity: quantity,
-        unitPrice: unitPrice,
+        productQuantity: productQuantity,
       );
-      _entries = [entry, ..._entries];
+      _imports = [imported, ..._imports];
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'Failed to record sale.';
-      debugPrint('Record sale error: $e');
+      _errorMessage = 'Failed to import sales data.';
+      debugPrint('Import sales error: $e');
       notifyListeners();
       rethrow;
     } finally {
@@ -144,30 +175,29 @@ class SalesProvider extends ChangeNotifier {
     }
   }
 
-  // ─── Performance Helpers ──────────────────────────────────
-
-  /// Groups range entries by shift name and returns totals.
-  /// Returns a list of maps with 'shift', 'actual' keys.
   List<Map<String, dynamic>> get performanceByShift {
     final Map<String, double> totals = {};
-    for (final entry in _rangeEntries) {
-      final key = entry.shiftName ?? 'No Shift';
-      totals[key] = (totals[key] ?? 0) + entry.totalAmount;
+    for (final row in _rangePerformance) {
+      final key = row['shift_name'] as String? ?? 'No Shift';
+      totals[key] =
+          (totals[key] ?? 0) + ((row['actual'] as num?)?.toDouble() ?? 0);
     }
     return totals.entries
         .map((e) => {'shift': e.key, 'actual': e.value})
         .toList()
-      ..sort((a, b) =>
-          (b['actual'] as double).compareTo(a['actual'] as double));
+      ..sort(
+        (a, b) => (b['actual'] as double).compareTo(a['actual'] as double),
+      );
   }
-
-  // ─── Clear ────────────────────────────────────────────────
 
   void clearAll() {
     _targets = [];
-    _entries = [];
-    _rangeEntries = [];
+    _imports = [];
+    _importFailures = [];
+    _rangeImports = [];
+    _rangePerformance = [];
     _errorMessage = null;
+    _isLoading = false;
     notifyListeners();
   }
 

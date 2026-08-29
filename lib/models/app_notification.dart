@@ -2,7 +2,8 @@
 class AppNotification {
   final String id;
   final String userId;
-  final String type; // 'task_assigned' | 'task_approved' | 'task_rejected' | 'shift_assigned' | 'target_achieved' | 'badge_unlocked' | 'competition_update'
+  final String
+  type; // task_assigned, pending_approval, task_approved, task_rejected, deadline_reminder, target_achieved, badge_unlocked
   final String title;
   final String message;
   final Map<String, dynamic>? data;

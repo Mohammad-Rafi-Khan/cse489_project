@@ -91,11 +91,11 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
       }
 
       await context.read<TaskProvider>().assignTask(
-            taskId: _selectedTask!.id,
-            userId: _selectedEmployee!.id,
-            scheduledDate: _scheduledDate!,
-            dueAt: dueAt,
-          );
+        taskId: _selectedTask!.id,
+        userId: _selectedEmployee!.id,
+        scheduledDate: _scheduledDate!,
+        dueAt: dueAt,
+      );
 
       if (!mounted) return;
 
@@ -178,7 +178,7 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
                               onRetry: _loadData,
                             )
                           : DropdownButtonFormField<Task>(
-                              value: _selectedTask,
+                              initialValue: _selectedTask,
                               isExpanded: true,
                               itemHeight: 64,
                               menuMaxHeight: 340,
@@ -260,7 +260,7 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
                               onRetry: _loadData,
                             )
                           : DropdownButtonFormField<UserProfile>(
-                              value: _selectedEmployee,
+                              initialValue: _selectedEmployee,
                               isExpanded: true,
                               menuMaxHeight: 340,
                               decoration: _dropdownDecoration(
@@ -285,9 +285,8 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
                                     ),
                                   )
                                   .toList(),
-                              onChanged: (employee) => setState(
-                                () => _selectedEmployee = employee,
-                              ),
+                              onChanged: (employee) =>
+                                  setState(() => _selectedEmployee = employee),
                             ),
                       const SizedBox(height: 24),
                       const _SectionHeader(
@@ -320,9 +319,15 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
                           if (isNarrow) {
                             return Column(
                               children: [
-                                SizedBox(width: double.infinity, child: dateCard),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: dateCard,
+                                ),
                                 const SizedBox(height: 12),
-                                SizedBox(width: double.infinity, child: timeCard),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: timeCard,
+                                ),
                               ],
                             );
                           }
@@ -410,7 +415,9 @@ class _AssignTaskScreenState extends State<AssignTaskScreen> {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
+        borderSide: BorderSide(
+          color: colorScheme.outline.withValues(alpha: 0.5),
+        ),
       ),
       filled: true,
       fillColor: colorScheme.surface,
@@ -434,10 +441,7 @@ class _SectionHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
         ),
       ],
@@ -473,7 +477,7 @@ class _PickerCard extends StatelessWidget {
           border: Border.all(
             color: hasValue
                 ? colorScheme.primary
-                : colorScheme.outline.withOpacity(0.5),
+                : colorScheme.outline.withValues(alpha: 0.5),
             width: hasValue ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(12),
@@ -487,7 +491,7 @@ class _PickerCard extends StatelessWidget {
               size: 18,
               color: hasValue
                   ? colorScheme.primary
-                  : colorScheme.onSurface.withOpacity(0.5),
+                  : colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 6),
             Text(
@@ -496,7 +500,7 @@ class _PickerCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 11,
-                color: colorScheme.onSurface.withOpacity(0.5),
+                color: colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(height: 2),
@@ -509,7 +513,7 @@ class _PickerCard extends StatelessWidget {
                 fontWeight: hasValue ? FontWeight.w600 : FontWeight.normal,
                 color: hasValue
                     ? colorScheme.onSurface
-                    : colorScheme.onSurface.withOpacity(0.4),
+                    : colorScheme.onSurface.withValues(alpha: 0.4),
               ),
             ),
           ],
@@ -538,7 +542,7 @@ class _SummaryRow extends StatelessWidget {
             child: Text(
               '$label:',
               style: TextStyle(
-                color: colorScheme.onPrimaryContainer.withOpacity(0.7),
+                color: colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
                 fontSize: 13,
               ),
             ),
@@ -564,10 +568,7 @@ class _EmptyDropdownCard extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _EmptyDropdownCard({
-    required this.message,
-    required this.onRetry,
-  });
+  const _EmptyDropdownCard({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -584,14 +585,14 @@ class _EmptyDropdownCard extends StatelessWidget {
         children: [
           Icon(
             Icons.info_outline,
-            color: colorScheme.onSurface.withOpacity(0.5),
+            color: colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: TextStyle(
-                color: colorScheme.onSurface.withOpacity(0.65),
+                color: colorScheme.onSurface.withValues(alpha: 0.65),
               ),
             ),
           ),

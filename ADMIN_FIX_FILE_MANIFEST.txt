@@ -1,0 +1,18 @@
+Only in /mnt/data/retailflow_fix: ADMIN_FIX_CHANGELOG.md
+Only in /mnt/data/retailflow_fix: ADMIN_FIX_README.md
+Files lib/providers/branch_provider.dart and lib/providers/branch_provider.dart differ
+Files lib/providers/user_management_provider.dart and lib/providers/user_management_provider.dart differ
+Files lib/screens/admin/branch_management_screen.dart and lib/screens/admin/branch_management_screen.dart differ
+Files lib/screens/admin/user_management_screen.dart and lib/screens/admin/user_management_screen.dart differ
+Files lib/screens/manager/sales_target_screen.dart and lib/screens/manager/sales_target_screen.dart differ
+Files lib/screens/products/product_form_screen.dart and lib/screens/products/product_form_screen.dart differ
+Files lib/services/branch_service.dart and lib/services/branch_service.dart differ
+Files lib/services/product_service.dart and lib/services/product_service.dart differ
+Files lib/services/sales_service.dart and lib/services/sales_service.dart differ
+Files lib/services/user_service.dart and lib/services/user_service.dart differ
+Files supabase/DEPLOYMENT.md and supabase/DEPLOYMENT.md differ
+Only in supabase: admin_remote_repair.sql
+Files supabase/config.toml and supabase/config.toml differ
+Files supabase/functions/create-user/index.ts and supabase/functions/create-user/index.ts differ
+Files supabase/setup.sql and supabase/setup.sql differ
+Files test/retailflow_domain_test.dart and test/retailflow_domain_test.dart differ

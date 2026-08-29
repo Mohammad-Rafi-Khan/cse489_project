@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../models/app_notification.dart';
+import '../../models/task_assignment.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/issue_provider.dart';
+import '../../providers/leave_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/task_provider.dart';
 
@@ -27,6 +32,8 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
     await Future.wait([
       context.read<TaskProvider>().loadEmployeeAssignments(auth.profile!.id),
       context.read<NotificationProvider>().loadNotifications(),
+      context.read<IssueProvider>().loadMyIssues(auth.profile!.id),
+      context.read<LeaveProvider>().loadMyLeaves(auth.profile!.id),
       auth.reloadProfile(),
     ]);
   }
@@ -55,8 +62,10 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                     icon: const Icon(Icons.notifications_outlined),
                     tooltip: 'Notifications',
                     onPressed: () {
-                      Navigator.pushNamed(context, '/notifications')
-                          .then((_) => notifProvider.loadNotifications());
+                      Navigator.pushNamed(
+                        context,
+                        '/notifications',
+                      ).then((_) => notifProvider.loadNotifications());
                     },
                   ),
                   if (unread > 0)
@@ -135,7 +144,8 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 26,
-                                backgroundColor: colorScheme.onPrimary.withValues(alpha: 0.2),
+                                backgroundColor: colorScheme.onPrimary
+                                    .withValues(alpha: 0.2),
                                 child: Text(
                                   (profile?.name.isNotEmpty == true)
                                       ? profile!.name[0].toUpperCase()
@@ -164,7 +174,9 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                                     Text(
                                       profile?.branchName ?? 'Branch Member',
                                       style: TextStyle(
-                                        color: colorScheme.onPrimary.withValues(alpha: 0.85),
+                                        color: colorScheme.onPrimary.withValues(
+                                          alpha: 0.85,
+                                        ),
                                         fontSize: 13,
                                       ),
                                     ),
@@ -179,63 +191,111 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                         // Lifetime Points & Badge Tier Progression Card
                         Card(
                           elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(Icons.emoji_events, color: Colors.amber.shade700, size: 24),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '${profile?.badgeTierName ?? 'Bronze'} Badge',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              '/points-history',
+                            ).then((_) => _loadData()),
+                            child: Padding(
+                              padding: const EdgeInsets.all(18),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Builder(
+                                    builder: (context) {
+                                      final badgeName =
+                                          profile?.badgeTierName ?? 'No Badge';
+                                      final badgeLabel = badgeName == 'No Badge'
+                                          ? badgeName
+                                          : '$badgeName Badge';
+                                      return Row(
+                                        children: [
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.emoji_events,
+                                                  color: Colors.amber.shade700,
+                                                  size: 24,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    badgeLabel,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    Text(
-                                      '${profile?.totalLifetimePoints ?? 0} pts',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.primary,
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            '${profile?.totalLifetimePoints ?? 0} pts',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: colorScheme.primary,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            Icons.chevron_right,
+                                            color: colorScheme.primary,
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: LinearProgressIndicator(
+                                      value: profile?.badgeProgress ?? 0.0,
+                                      minHeight: 10,
+                                      backgroundColor:
+                                          colorScheme.surfaceContainerHighest,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.amber.shade700,
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: LinearProgressIndicator(
-                                    value: profile?.badgeProgress ?? 0.0,
-                                    minHeight: 10,
-                                    backgroundColor: colorScheme.surfaceContainerHighest,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.amber.shade700),
                                   ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Progress to ${profile?.nextBadgeName ?? 'Silver'}',
-                                      style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withValues(alpha: 0.6)),
-                                    ),
-                                    Text(
-                                      'Goal: ${profile?.nextBadgeThreshold ?? 500} pts',
-                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colorScheme.primary),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Progress to ${profile?.nextBadgeName ?? 'Silver'}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: colorScheme.onSurface
+                                              .withValues(alpha: 0.6),
+                                        ),
+                                      ),
+                                      Text(
+                                        'Goal: ${profile?.nextBadgeThreshold ?? 500} pts',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -245,9 +305,15 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                         Consumer<TaskProvider>(
                           builder: (context, taskProvider, _) {
                             final tasks = taskProvider.employeeAssignments;
-                            final pending = tasks.where((t) => t.isPending).length;
-                            final completed = tasks.where((t) => t.isCompleted).length;
-                            final approved = tasks.where((t) => t.isApproved).length;
+                            final pending = tasks
+                                .where((t) => t.isPending)
+                                .length;
+                            final completed = tasks
+                                .where((t) => t.isCompleted)
+                                .length;
+                            final approved = tasks
+                                .where((t) => t.isApproved)
+                                .length;
 
                             return Row(
                               children: [
@@ -282,54 +348,85 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                           },
                         ),
                         const SizedBox(height: 24),
+                        const _TodaysTasksPanel(),
+                        const SizedBox(height: 24),
 
                         // Quick Actions Section
                         Text(
                           'Quick Actions',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 12),
                         _DashboardTile(
                           icon: Icons.assignment_outlined,
                           title: 'My Tasks',
-                          subtitle: 'Complete tasks with photo proof & view history',
+                          subtitle:
+                              'Complete tasks with photo proof & view history',
                           color: colorScheme.primary,
-                          onTap: () => Navigator.pushNamed(context, '/my-tasks').then((_) => _loadData()),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/my-tasks',
+                          ).then((_) => _loadData()),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
-                          icon: Icons.point_of_sale,
-                          title: 'Record Sale',
-                          subtitle: 'Enter product sales transactions for current shift',
-                          color: const Color(0xFF2E7D32),
-                          onTap: () => Navigator.pushNamed(context, '/sales-entry'),
+                          icon: Icons.calendar_month_outlined,
+                          title: 'My Schedule',
+                          subtitle: 'View your upcoming shift assignments',
+                          color: Colors.purple,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/my-schedule',
+                          ).then((_) => _loadData()),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
-                          icon: Icons.leaderboard_outlined,
-                          title: 'Branch Competitions',
-                          subtitle: 'View active inter-branch challenge leaderboards',
-                          color: Colors.deepOrange,
-                          onTap: () => Navigator.pushNamed(context, '/competitions'),
+                          icon: Icons.event_available_outlined,
+                          title: 'My Attendance',
+                          subtitle:
+                              'Check in, check out, and review your attendance history',
+                          color: Colors.green,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/attendance',
+                          ).then((_) => _loadData()),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
                           icon: Icons.analytics_outlined,
                           title: 'My Reports & Performance',
-                          subtitle: 'View completion rate, badges, and points history',
+                          subtitle:
+                              'View completion rate, badges, and points history',
                           color: Colors.indigo,
                           onTap: () => Navigator.pushNamed(context, '/reports'),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
-                          icon: Icons.inventory_2_outlined,
-                          title: 'Product Catalog',
-                          subtitle: 'Browse products and unit prices',
-                          color: colorScheme.secondary,
-                          onTap: () => Navigator.pushNamed(context, '/products'),
+                          icon: Icons.report_problem_outlined,
+                          title: 'Issue Reporting',
+                          subtitle:
+                              'Log operational issues and track status updates',
+                          color: Colors.red,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/issues',
+                          ).then((_) => _loadData()),
                         ),
+                        const SizedBox(height: 10),
+                        _DashboardTile(
+                          icon: Icons.event_available_outlined,
+                          title: 'Leave Requests',
+                          subtitle:
+                              'Submit leave requests and review your history',
+                          color: Colors.green,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/leave-requests',
+                          ).then((_) => _loadData()),
+                        ),
+                        const SizedBox(height: 24),
+                        const _EmployeeActivityTimeline(),
                       ],
                     ),
                   ),
@@ -341,6 +438,292 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
       ),
     );
   }
+}
+
+class _TodaysTasksPanel extends StatelessWidget {
+  const _TodaysTasksPanel();
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Consumer<TaskProvider>(
+      builder: (context, taskProvider, _) {
+        final today = DateTime.now();
+        final tasks =
+            taskProvider.employeeAssignments
+                .where(
+                  (assignment) => _isSameDay(assignment.scheduledDate, today),
+                )
+                .toList()
+              ..sort((a, b) => a.status.compareTo(b.status));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Today\'s Tasks',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            if (tasks.isEmpty)
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Text(
+                    'No tasks scheduled for today.',
+                    style: TextStyle(
+                      color: colorScheme.onSurface.withValues(alpha: 0.62),
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...tasks
+                  .take(4)
+                  .map(
+                    (task) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(
+                          task.isApproved
+                              ? Icons.verified_outlined
+                              : task.isCompleted
+                              ? Icons.hourglass_top_outlined
+                              : task.isRejected
+                              ? Icons.error_outline
+                              : Icons.assignment_outlined,
+                          color: task.isApproved
+                              ? Colors.green
+                              : task.isRejected
+                              ? colorScheme.error
+                              : colorScheme.primary,
+                        ),
+                        title: Text(
+                          task.taskTitle ?? 'Task',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(task.statusLabel),
+                        trailing: Text(
+                          '${task.potentialPoints} pts',
+                          style: TextStyle(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _EmployeeActivityTimeline extends StatelessWidget {
+  const _EmployeeActivityTimeline();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<TaskProvider, NotificationProvider>(
+      builder: (context, taskProvider, notificationProvider, _) {
+        final events = <_TimelineEvent>[
+          ..._taskEvents(taskProvider.employeeAssignments),
+          ..._notificationEvents(notificationProvider.notifications),
+        ]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+        final visibleEvents = events.take(8).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Activity Timeline',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            if (visibleEvents.isEmpty)
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Text(
+                    'No activity yet. Completed tasks, approvals, points, and badges will appear here.',
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.62),
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...visibleEvents.map((event) => _TimelineTile(event: event)),
+          ],
+        );
+      },
+    );
+  }
+
+  List<_TimelineEvent> _taskEvents(List<TaskAssignment> assignments) {
+    final events = <_TimelineEvent>[];
+    for (final assignment in assignments) {
+      final title = assignment.taskTitle ?? 'Task';
+      for (final completion in assignment.completions) {
+        events.add(
+          _TimelineEvent(
+            icon: completion.photoUrl == null
+                ? Icons.check_circle_outline
+                : Icons.add_a_photo_outlined,
+            color: Colors.blue,
+            title: 'Submitted $title',
+            subtitle: completion.photoUrl == null
+                ? 'Completion attempt ${completion.attemptNumber} submitted'
+                : 'Photo proof uploaded for attempt ${completion.attemptNumber}',
+            timestamp: completion.submittedAt,
+          ),
+        );
+        if (completion.isApproved && completion.reviewedAt != null) {
+          events.add(
+            _TimelineEvent(
+              icon: Icons.verified_outlined,
+              color: Colors.green,
+              title: 'Approved $title',
+              subtitle: completion.pointsAwarded > 0
+                  ? '+${completion.pointsAwarded} points earned'
+                  : 'Approved by manager',
+              timestamp: completion.reviewedAt!,
+            ),
+          );
+        }
+        if (completion.isRejected && completion.reviewedAt != null) {
+          events.add(
+            _TimelineEvent(
+              icon: Icons.highlight_off_outlined,
+              color: Colors.red,
+              title: 'Rejected $title',
+              subtitle: completion.reviewNote ?? 'Manager requested changes',
+              timestamp: completion.reviewedAt!,
+            ),
+          );
+        }
+      }
+    }
+    return events;
+  }
+
+  List<_TimelineEvent> _notificationEvents(
+    List<AppNotification> notifications,
+  ) {
+    const includedTypes = {
+      'task_assigned',
+      'badge_unlocked',
+      'deadline_reminder',
+    };
+
+    return notifications
+        .where((notification) => includedTypes.contains(notification.type))
+        .map(
+          (notification) => _TimelineEvent(
+            icon: _iconForNotification(notification.type),
+            color: _colorForNotification(notification.type),
+            title: notification.title,
+            subtitle: notification.message,
+            timestamp: notification.createdAt,
+          ),
+        )
+        .toList();
+  }
+
+  IconData _iconForNotification(String type) {
+    return switch (type) {
+      'badge_unlocked' => Icons.emoji_events_outlined,
+      'deadline_reminder' => Icons.alarm_outlined,
+      _ => Icons.assignment_outlined,
+    };
+  }
+
+  Color _colorForNotification(String type) {
+    return switch (type) {
+      'badge_unlocked' => Colors.amber,
+      'deadline_reminder' => Colors.deepOrange,
+      _ => Colors.indigo,
+    };
+  }
+}
+
+class _TimelineTile extends StatelessWidget {
+  final _TimelineEvent event;
+
+  const _TimelineTile({required this.event});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final formatter = DateFormat('dd MMM, h:mm a');
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: event.color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(event.icon, color: event.color, size: 20),
+        ),
+        title: Text(
+          event.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          event.subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Text(
+          formatter.format(event.timestamp.toLocal()),
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            fontSize: 11,
+            color: colorScheme.onSurface.withValues(alpha: 0.55),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimelineEvent {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final DateTime timestamp;
+
+  const _TimelineEvent({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.timestamp,
+  });
 }
 
 class _StatCard extends StatelessWidget {
@@ -379,7 +762,9 @@ class _StatCard extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 11,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -425,11 +810,7 @@ class _DashboardTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        subtitle: Text(
-          subtitle,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
+        subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
         trailing: Icon(
           Icons.chevron_right,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),

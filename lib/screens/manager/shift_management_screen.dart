@@ -126,17 +126,25 @@ class _ShiftsTab extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.schedule,
-                    size: 64, color: cs.onSurface.withValues(alpha: 0.3)),
+                Icon(
+                  Icons.schedule,
+                  size: 64,
+                  color: cs.onSurface.withValues(alpha: 0.3),
+                ),
                 const SizedBox(height: 12),
-                Text('No Shifts Yet',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: cs.onSurface.withValues(alpha: 0.5))),
+                Text(
+                  'No Shifts Yet',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
                 const SizedBox(height: 6),
-                Text('Create shifts like "Morning" or "Evening".',
-                    style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4))),
+                Text(
+                  'Create shifts like "Morning" or "Evening".',
+                  style: TextStyle(color: cs.onSurface.withValues(alpha: 0.4)),
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: onAdd,
@@ -179,8 +187,10 @@ class _ShiftCard extends StatelessWidget {
       child: Opacity(
         opacity: shift.isActive ? 1 : 0.6,
         child: ListTile(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
           leading: Container(
             width: 44,
             height: 44,
@@ -194,8 +204,7 @@ class _ShiftCard extends StatelessWidget {
             shift.name,
             style: TextStyle(
               fontWeight: FontWeight.w700,
-              decoration:
-                  shift.isActive ? null : TextDecoration.lineThrough,
+              decoration: shift.isActive ? null : TextDecoration.lineThrough,
             ),
           ),
           subtitle: Text(shift.timeRange),
@@ -205,15 +214,16 @@ class _ShiftCard extends StatelessWidget {
               if (!shift.isActive)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: cs.errorContainer,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     'Inactive',
-                    style: TextStyle(
-                        color: cs.onErrorContainer, fontSize: 11),
+                    style: TextStyle(color: cs.onErrorContainer, fontSize: 11),
                   ),
                 ),
               IconButton(
@@ -227,7 +237,10 @@ class _ShiftCard extends StatelessWidget {
                     builder: (_) => _ShiftFormSheet(shift: shift),
                   ).then((_) {
                     if (!context.mounted) return;
-                    final branchId = context.read<AuthProvider>().profile?.branchId;
+                    final branchId = context
+                        .read<AuthProvider>()
+                        .profile
+                        ?.branchId;
                     if (branchId != null) {
                       context.read<ShiftProvider>().loadAllShifts(branchId);
                     }
@@ -257,16 +270,16 @@ class _ScheduleTabState extends State<_ScheduleTab> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _loadSchedule());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSchedule());
   }
 
   Future<void> _loadSchedule() async {
     final auth = context.read<AuthProvider>();
     if (auth.profile?.branchId == null) return;
-    await context
-        .read<ShiftProvider>()
-        .loadScheduleForDate(auth.profile!.branchId!, _selectedDate);
+    await context.read<ShiftProvider>().loadScheduleForDate(
+      auth.profile!.branchId!,
+      _selectedDate,
+    );
   }
 
   Future<void> _pickDate() async {
@@ -301,8 +314,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
         // Date selector bar
         Container(
           color: cs.surfaceContainerLowest,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
               Expanded(
@@ -311,21 +323,22 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(
-                          color: cs.outline.withValues(alpha: 0.4)),
+                        color: cs.outline.withValues(alpha: 0.4),
+                      ),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_month,
-                            size: 18, color: cs.primary),
+                        Icon(Icons.calendar_month, size: 18, color: cs.primary),
                         const SizedBox(width: 8),
                         Text(
                           dateFormatter.format(_selectedDate),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -341,9 +354,12 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                   backgroundColor: cs.primary,
                   foregroundColor: cs.onPrimary,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
@@ -360,18 +376,26 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.event_available,
-                          size: 56,
-                          color: cs.onSurface.withValues(alpha: 0.3)),
+                      Icon(
+                        Icons.event_available,
+                        size: 56,
+                        color: cs.onSurface.withValues(alpha: 0.3),
+                      ),
                       const SizedBox(height: 12),
-                      Text('No Schedule',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: cs.onSurface.withValues(alpha: 0.5))),
+                      Text(
+                        'No Schedule',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: cs.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text('No employees scheduled for this date.',
-                          style: TextStyle(
-                              color: cs.onSurface.withValues(alpha: 0.4))),
+                      Text(
+                        'No employees scheduled for this date.',
+                        style: TextStyle(
+                          color: cs.onSurface.withValues(alpha: 0.4),
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -386,8 +410,7 @@ class _ScheduleTabState extends State<_ScheduleTab> {
                   itemBuilder: (context, index) {
                     return Center(
                       child: ConstrainedBox(
-                        constraints:
-                            const BoxConstraints(maxWidth: 760),
+                        constraints: const BoxConstraints(maxWidth: 760),
                         child: _ScheduleCard(
                           es: provider.scheduleForDate[index],
                         ),
@@ -419,20 +442,20 @@ class _ScheduleCard extends StatelessWidget {
           backgroundColor: cs.primaryContainer,
           child: Text(
             (es.employeeName ?? '?')[0].toUpperCase(),
-            style: TextStyle(
-                color: cs.primary, fontWeight: FontWeight.bold),
+            style: TextStyle(color: cs.primary, fontWeight: FontWeight.bold),
           ),
         ),
-        title: Text(es.employeeName ?? 'Employee',
-            style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(
+          es.employeeName ?? 'Employee',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         subtitle: Text(es.shiftName ?? 'Unknown Shift'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (es.shiftStartTime != null)
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: cs.primaryContainer,
                   borderRadius: BorderRadius.circular(8),
@@ -440,9 +463,10 @@ class _ScheduleCard extends StatelessWidget {
                 child: Text(
                   _fmtTime(es.shiftStartTime!),
                   style: TextStyle(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12),
+                    color: cs.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             IconButton(
@@ -453,22 +477,27 @@ class _ScheduleCard extends StatelessWidget {
                   builder: (ctx) => AlertDialog(
                     title: const Text('Remove Schedule'),
                     content: Text(
-                        'Remove ${es.employeeName ?? 'employee'} from ${es.shiftName ?? 'shift'}?'),
+                      'Remove ${es.employeeName ?? 'employee'} from ${es.shiftName ?? 'shift'}?',
+                    ),
                     actions: [
                       TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel')),
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
                       TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: Text('Remove',
-                              style: TextStyle(color: cs.error))),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(
+                          'Remove',
+                          style: TextStyle(color: cs.error),
+                        ),
+                      ),
                     ],
                   ),
                 );
                 if (confirmed == true && context.mounted) {
-                  await context
-                      .read<ShiftProvider>()
-                      .removeEmployeeShift(es.id);
+                  await context.read<ShiftProvider>().removeEmployeeShift(
+                    es.id,
+                  );
                 }
               },
             ),
@@ -556,10 +585,12 @@ class _ShiftFormSheetState extends State<_ShiftFormSheet> {
   Future<void> _submit() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Shift name is required.'),
-        backgroundColor: Colors.red,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Shift name is required.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
     final auth = context.read<AuthProvider>();
@@ -587,17 +618,21 @@ class _ShiftFormSheetState extends State<_ShiftFormSheet> {
       }
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_isEditing ? 'Shift updated!' : 'Shift created!'),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isEditing ? 'Shift updated!' : 'Shift created!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Failed. Please try again.'),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -610,12 +645,12 @@ class _ShiftFormSheetState extends State<_ShiftFormSheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: cs.surface,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
         child: Column(
@@ -636,9 +671,10 @@ class _ShiftFormSheetState extends State<_ShiftFormSheet> {
             Text(
               _isEditing ? 'Edit Shift' : 'New Shift',
               style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: cs.primary),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: cs.primary,
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -649,7 +685,8 @@ class _ShiftFormSheetState extends State<_ShiftFormSheet> {
                 hintText: 'e.g. Morning, Evening',
                 prefixIcon: const Icon(Icons.schedule),
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 14),
@@ -699,8 +736,11 @@ class _TimePickerCard extends StatelessWidget {
   final String label;
   final String time;
   final VoidCallback onTap;
-  const _TimePickerCard(
-      {required this.label, required this.time, required this.onTap});
+  const _TimePickerCard({
+    required this.label,
+    required this.time,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -714,15 +754,23 @@ class _TimePickerCard extends StatelessWidget {
           border: Border.all(color: cs.primary, width: 2),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
               style: TextStyle(
-                  fontSize: 11, color: cs.onSurface.withValues(alpha: 0.5))),
-          const SizedBox(height: 4),
-          Text(time,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 14)),
-        ]),
+                fontSize: 11,
+                color: cs.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              time,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -745,36 +793,40 @@ class _AssignShiftSheetState extends State<_AssignShiftSheet> {
 
   Future<void> _submit() async {
     if (_selectedEmployee == null || _selectedShift == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please select both employee and shift.'),
-        backgroundColor: Colors.red,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select both employee and shift.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
     setState(() => _isSubmitting = true);
     try {
       await context.read<ShiftProvider>().assignEmployeeToShift(
-            employeeId: _selectedEmployee!.id,
-            shiftId: _selectedShift!.id,
-            workDate: widget.workDate,
-          );
+        employeeId: _selectedEmployee!.id,
+        shiftId: _selectedShift!.id,
+        workDate: widget.workDate,
+      );
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              '${_selectedEmployee!.name} assigned to ${_selectedShift!.name}!'),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${_selectedEmployee!.name} assigned to ${_selectedShift!.name}!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         final msg = e.toString().toLowerCase().contains('unique')
             ? 'This employee is already assigned to this shift on this date.'
             : 'Failed. Please try again.';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(msg),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -800,17 +852,16 @@ class _AssignShiftSheetState extends State<_AssignShiftSheet> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final provider = context.watch<ShiftProvider>();
-    final dateStr =
-        DateFormat('EEE, dd MMM yyyy').format(widget.workDate);
+    final dateStr = DateFormat('EEE, dd MMM yyyy').format(widget.workDate);
 
     return Padding(
       padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: cs.surface,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
         child: Column(
@@ -831,29 +882,33 @@ class _AssignShiftSheetState extends State<_AssignShiftSheet> {
             Text(
               'Assign to Shift',
               style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: cs.primary),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: cs.primary,
+              ),
             ),
             const SizedBox(height: 4),
-            Text(dateStr,
-                style: TextStyle(
-                    fontSize: 14,
-                    color: cs.onSurface.withValues(alpha: 0.6))),
+            Text(
+              dateStr,
+              style: TextStyle(
+                fontSize: 14,
+                color: cs.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
             const SizedBox(height: 20),
             DropdownButtonFormField<UserProfile>(
               initialValue: _selectedEmployee,
               isExpanded: true,
               menuMaxHeight: 300,
-              decoration:
-                  _dropDeco(context, 'Employee', Icons.person_outline),
+              decoration: _dropDeco(context, 'Employee', Icons.person_outline),
               hint: const Text('Select employee'),
               items: provider.branchEmployees
-                  .map((e) => DropdownMenuItem<UserProfile>(
-                        value: e,
-                        child: Text(e.name,
-                            overflow: TextOverflow.ellipsis),
-                      ))
+                  .map(
+                    (e) => DropdownMenuItem<UserProfile>(
+                      value: e,
+                      child: Text(e.name, overflow: TextOverflow.ellipsis),
+                    ),
+                  )
                   .toList(),
               onChanged: (e) => setState(() => _selectedEmployee = e),
             ),
@@ -862,15 +917,18 @@ class _AssignShiftSheetState extends State<_AssignShiftSheet> {
               initialValue: _selectedShift,
               isExpanded: true,
               menuMaxHeight: 300,
-              decoration: _dropDeco(
-                  context, 'Shift', Icons.schedule_outlined),
+              decoration: _dropDeco(context, 'Shift', Icons.schedule_outlined),
               hint: const Text('Select shift'),
               items: provider.shifts
-                  .map((s) => DropdownMenuItem<Shift>(
-                        value: s,
-                        child: Text('${s.name} (${s.timeRange})',
-                            overflow: TextOverflow.ellipsis),
-                      ))
+                  .map(
+                    (s) => DropdownMenuItem<Shift>(
+                      value: s,
+                      child: Text(
+                        '${s.name} (${s.timeRange})',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (s) => setState(() => _selectedShift = s),
             ),

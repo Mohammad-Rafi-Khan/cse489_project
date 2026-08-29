@@ -57,10 +57,11 @@ class TaskAssignment {
 
     List<TaskCompletion> attempts = [];
     if (map['task_completions'] is List) {
-      attempts = (map['task_completions'] as List)
-          .map((e) => TaskCompletion.fromMap(e as Map<String, dynamic>))
-          .toList()
-        ..sort((a, b) => b.attemptNumber.compareTo(a.attemptNumber));
+      attempts =
+          (map['task_completions'] as List)
+              .map((e) => TaskCompletion.fromMap(e as Map<String, dynamic>))
+              .toList()
+            ..sort((a, b) => b.attemptNumber.compareTo(a.attemptNumber));
     }
 
     final latest = attempts.isNotEmpty ? attempts.first : null;
@@ -105,4 +106,14 @@ class TaskAssignment {
   bool get isCompleted => status == 'completed';
   bool get isApproved => status == 'approved';
   bool get isRejected => status == 'rejected';
+
+  int get ruleBasePoints {
+    return switch (frequency) {
+      'weekly' => 30,
+      'monthly' => 60,
+      _ => 10,
+    };
+  }
+
+  int get potentialPoints => ruleBasePoints + (photoRequired ? 5 : 0);
 }

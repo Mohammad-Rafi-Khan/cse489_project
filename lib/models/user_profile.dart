@@ -29,8 +29,8 @@ class UserProfile {
   });
 
   factory UserProfile.fromMap(Map<String, dynamic> map) {
-    final branchData = map['branches'] as Map<String, dynamic>?;
-    final badgeData = map['badges'] as Map<String, dynamic>?;
+    final branchData = _nestedMap(map['branches']);
+    final badgeData = _nestedMap(map['badges']);
 
     return UserProfile(
       id: map['id'] as String,
@@ -47,16 +47,25 @@ class UserProfile {
     );
   }
 
+  static Map<String, dynamic>? _nestedMap(dynamic value) {
+    if (value is Map) return Map<String, dynamic>.from(value);
+    if (value is List && value.isNotEmpty) {
+      final first = value.first;
+      if (first is Map) return Map<String, dynamic>.from(first);
+    }
+    return null;
+  }
+
   bool get isEmployee => role == 'employee';
   bool get isManager => role == 'manager';
   bool get isAdmin => role == 'admin';
 
   /// Returns badge name (or computes based on standard thresholds)
   String get badgeTierName {
-    if (currentBadgeName != null && currentBadgeName!.isNotEmpty) {
+    if (currentBadgeName != null &&
+        {'Bronze', 'Silver', 'Gold'}.contains(currentBadgeName)) {
       return currentBadgeName!;
     }
-    if (totalLifetimePoints >= 5000) return 'Platinum';
     if (totalLifetimePoints >= 3000) return 'Gold';
     if (totalLifetimePoints >= 1500) return 'Silver';
     if (totalLifetimePoints >= 500) return 'Bronze';
@@ -68,15 +77,13 @@ class UserProfile {
     if (totalLifetimePoints < 500) return 500;
     if (totalLifetimePoints < 1500) return 1500;
     if (totalLifetimePoints < 3000) return 3000;
-    if (totalLifetimePoints < 5000) return 5000;
-    return 5000;
+    return 3000;
   }
 
   String get nextBadgeName {
     if (totalLifetimePoints < 500) return 'Bronze';
     if (totalLifetimePoints < 1500) return 'Silver';
     if (totalLifetimePoints < 3000) return 'Gold';
-    if (totalLifetimePoints < 5000) return 'Platinum';
     return 'Max Tier';
   }
 
@@ -84,11 +91,8 @@ class UserProfile {
     int prevMin = 0;
     int nextMin = 500;
 
-    if (totalLifetimePoints >= 5000) return 1.0;
-    if (totalLifetimePoints >= 3000) {
-      prevMin = 3000;
-      nextMin = 5000;
-    } else if (totalLifetimePoints >= 1500) {
+    if (totalLifetimePoints >= 3000) return 1.0;
+    if (totalLifetimePoints >= 1500) {
       prevMin = 1500;
       nextMin = 3000;
     } else if (totalLifetimePoints >= 500) {

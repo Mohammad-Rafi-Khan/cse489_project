@@ -30,7 +30,7 @@ class Shift {
     );
   }
 
-  /// Returns a human-readable time range label, e.g. "08:00 – 16:00".
+  /// Returns a human-readable time range label, e.g. "08:00 - 16:00".
   String get timeRange {
     String fmt(String t) {
       final parts = t.split(':');
@@ -42,7 +42,7 @@ class Shift {
       return '$displayH:$m $period';
     }
 
-    return '${fmt(startTime)} – ${fmt(endTime)}';
+    return '${fmt(startTime)} - ${fmt(endTime)}';
   }
 
   @override

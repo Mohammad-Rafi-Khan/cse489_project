@@ -7,7 +7,8 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/loading_button.dart';
 
 /// Manager screen to create, view, and edit task templates.
-/// Also provides the ability to auto-generate recurring assignments.
+/// Templates are reusable task definitions that a manager can later assign
+/// to employees manually via the Assign Task screen.
 class TaskTemplateScreen extends StatefulWidget {
   const TaskTemplateScreen({super.key});
 
@@ -25,9 +26,9 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     if (auth.profile?.branchId == null) return;
-    await context
-        .read<TaskProvider>()
-        .loadAllTaskTemplates(auth.profile!.branchId!);
+    await context.read<TaskProvider>().loadAllTaskTemplates(
+      auth.profile!.branchId!,
+    );
   }
 
   void _openForm({Task? template}) {
@@ -37,15 +38,6 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => _TemplateFormSheet(template: template),
     ).then((_) => _load());
-  }
-
-  void _openRecurringSheet(Task template) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _RecurringSheet(template: template),
-    );
   }
 
   @override
@@ -64,8 +56,7 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
       ),
       body: Consumer<TaskProvider>(
         builder: (context, taskProvider, _) {
-          if (taskProvider.isLoading &&
-              taskProvider.allTaskTemplates.isEmpty) {
+          if (taskProvider.isLoading && taskProvider.allTaskTemplates.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -75,7 +66,8 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
             return EmptyState(
               icon: Icons.task_outlined,
               title: 'No Task Templates',
-              subtitle: 'Create task templates to assign to employees.',
+              subtitle:
+                  'Create reusable task templates. Assign them to employees from the Assign Task screen.',
               action: TextButton.icon(
                 icon: const Icon(Icons.add),
                 label: const Text('New Template'),
@@ -97,8 +89,6 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
                     child: _TemplateCard(
                       template: templates[index],
                       onEdit: () => _openForm(template: templates[index]),
-                      onGenerate: () =>
-                          _openRecurringSheet(templates[index]),
                     ),
                   ),
                 );
@@ -121,12 +111,10 @@ class _TaskTemplateScreenState extends State<TaskTemplateScreen> {
 class _TemplateCard extends StatelessWidget {
   final Task template;
   final VoidCallback onEdit;
-  final VoidCallback onGenerate;
 
   const _TemplateCard({
     required this.template,
     required this.onEdit,
-    required this.onGenerate,
   });
 
   Color _freqColor(String freq) {
@@ -173,7 +161,9 @@ class _TemplateCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: freqColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
@@ -191,7 +181,9 @@ class _TemplateCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.errorContainer,
                         borderRadius: BorderRadius.circular(12),
@@ -228,13 +220,13 @@ class _TemplateCard extends StatelessWidget {
                 children: [
                   _Badge(
                     icon: Icons.star_outline,
-                    label: '${template.basePoints} pts base',
+                    label: '${template.ruleBasePoints} pts base',
                     color: Colors.amber.shade700,
                   ),
-                  if (template.photoBonusPoints > 0)
+                  if (template.photoRequired)
                     _Badge(
                       icon: Icons.add_a_photo_outlined,
-                      label: '+${template.photoBonusPoints} pts bonus',
+                      label: '+${template.rulePhotoBonusPoints} pts bonus',
                       color: Colors.teal.shade700,
                     ),
                   if (template.photoRequired)
@@ -243,39 +235,28 @@ class _TemplateCard extends StatelessWidget {
                       label: 'Photo required',
                       color: cs.primary,
                     ),
+                  if (template.deadlineHoursAfterAssignment != null)
+                    _Badge(
+                      icon: Icons.schedule_outlined,
+                      label: 'Due in ${template.deadlineHoursAfterAssignment}h',
+                      color: Colors.deepOrange.shade700,
+                    ),
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: const Text('Edit Template'),
-                      onPressed: onEdit,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit Template'),
+                  onPressed: onEdit,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.repeat, size: 16),
-                      label: const Text('Auto-Generate'),
-                      onPressed: template.isActive ? onGenerate : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: cs.primary,
-                        foregroundColor: cs.onPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
@@ -298,11 +279,14 @@ class _Badge extends StatelessWidget {
       children: [
         Icon(icon, size: 13, color: color),
         const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                color: color,
-                fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
@@ -323,12 +307,21 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
   final _descController = TextEditingController();
   final _pointsController = TextEditingController();
   final _bonusPointsController = TextEditingController();
+  final _deadlineHoursController = TextEditingController();
   String _frequency = 'daily';
   bool _photoRequired = false;
   bool _isActive = true;
   bool _isSubmitting = false;
 
   bool get _isEditing => widget.template != null;
+
+  int _basePointsForFrequency(String frequency) {
+    return switch (frequency) {
+      'weekly' => 30,
+      'monthly' => 60,
+      _ => 10,
+    };
+  }
 
   @override
   void initState() {
@@ -337,13 +330,15 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
       final t = widget.template!;
       _titleController.text = t.title;
       _descController.text = t.description ?? '';
-      _pointsController.text = t.basePoints.toString();
-      _bonusPointsController.text = t.photoBonusPoints.toString();
+      _pointsController.text = _basePointsForFrequency(t.frequency).toString();
+      _bonusPointsController.text = '5';
+      _deadlineHoursController.text =
+          t.deadlineHoursAfterAssignment?.toString() ?? '';
       _frequency = t.frequency;
       _photoRequired = t.photoRequired;
       _isActive = t.isActive;
     } else {
-      _pointsController.text = '10';
+      _pointsController.text = _basePointsForFrequency(_frequency).toString();
       _bonusPointsController.text = '5';
     }
   }
@@ -354,20 +349,37 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
     _descController.dispose();
     _pointsController.dispose();
     _bonusPointsController.dispose();
+    _deadlineHoursController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Title is required.'),
-        backgroundColor: Colors.red,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Title is required.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
-    final points = int.tryParse(_pointsController.text.trim()) ?? 10;
-    final bonusPoints = int.tryParse(_bonusPointsController.text.trim()) ?? 5;
+    final points = _basePointsForFrequency(_frequency);
+    const bonusPoints = 5;
+    final deadlineText = _deadlineHoursController.text.trim();
+    final deadlineHours = deadlineText.isEmpty
+        ? null
+        : int.tryParse(deadlineText);
+    if (deadlineText.isNotEmpty &&
+        (deadlineHours == null || deadlineHours <= 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Deadline hours must be a positive number.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     final auth = context.read<AuthProvider>();
     final branchId = auth.profile?.branchId;
@@ -388,6 +400,7 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
           photoBonusPoints: bonusPoints,
           photoRequired: _photoRequired,
           isActive: _isActive,
+          deadlineHoursAfterAssignment: deadlineHours,
         );
       } else {
         await provider.createTaskTemplate(
@@ -400,23 +413,28 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
           basePoints: points,
           photoBonusPoints: bonusPoints,
           photoRequired: _photoRequired,
+          deadlineHoursAfterAssignment: deadlineHours,
         );
       }
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_isEditing
-              ? 'Template updated!'
-              : 'Template created!'),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isEditing ? 'Template updated!' : 'Template created!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Failed. Please try again.'),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -455,9 +473,18 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
                   Text(
                     _isEditing ? 'Edit Template' : 'New Task Template',
                     style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: cs.primary),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: cs.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Templates are reusable task definitions. Use the Assign Task screen to assign them to employees.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   TextField(
@@ -467,7 +494,8 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
                       labelText: 'Title *',
                       prefixIcon: const Icon(Icons.title),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -479,7 +507,8 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
                       labelText: 'Description',
                       prefixIcon: const Icon(Icons.notes_outlined),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       alignLabelWithHint: true,
                     ),
                   ),
@@ -487,21 +516,40 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
                   DropdownButtonFormField<String>(
                     initialValue: _frequency,
                     decoration: InputDecoration(
-                      labelText: 'Frequency',
+                      labelText: 'Frequency (label only)',
                       prefixIcon: const Icon(Icons.repeat),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     items: const [
+                      DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                      DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
                       DropdownMenuItem(
-                          value: 'daily', child: Text('Daily')),
-                      DropdownMenuItem(
-                          value: 'weekly', child: Text('Weekly')),
-                      DropdownMenuItem(
-                          value: 'monthly', child: Text('Monthly')),
+                        value: 'monthly',
+                        child: Text('Monthly'),
+                      ),
                     ],
-                    onChanged: (v) =>
-                        setState(() => _frequency = v ?? 'daily'),
+                    onChanged: (v) => setState(() {
+                      _frequency = v ?? 'daily';
+                      _pointsController.text = _basePointsForFrequency(
+                        _frequency,
+                      ).toString();
+                      _bonusPointsController.text = '5';
+                    }),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _deadlineHoursController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Deadline Hours After Assignment',
+                      hintText: 'Optional',
+                      prefixIcon: const Icon(Icons.schedule_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -509,12 +557,14 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
                       Expanded(
                         child: TextField(
                           controller: _pointsController,
+                          readOnly: true,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Base Points',
+                            labelText: 'Base Points (Auto)',
                             prefixIcon: const Icon(Icons.star_outline),
                             border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -522,12 +572,14 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
                       Expanded(
                         child: TextField(
                           controller: _bonusPointsController,
+                          readOnly: true,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Photo Bonus',
+                            labelText: 'Photo Bonus (Auto)',
                             prefixIcon: const Icon(Icons.add_a_photo_outlined),
                             border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -537,7 +589,8 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
                   SwitchListTile(
                     title: const Text('Photo Proof Required'),
                     subtitle: const Text(
-                        'Employee must submit a verified photo to mark complete'),
+                      'Employee must submit a verified photo to mark complete',
+                    ),
                     value: _photoRequired,
                     onChanged: (v) => setState(() => _photoRequired = v),
                     contentPadding: EdgeInsets.zero,
@@ -546,7 +599,8 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
                     SwitchListTile(
                       title: const Text('Active Template'),
                       subtitle: const Text(
-                          'Inactive templates won\'t appear in assignment forms'),
+                        'Inactive templates won\'t appear in the assignment form',
+                      ),
                       value: _isActive,
                       onChanged: (v) => setState(() => _isActive = v),
                       contentPadding: EdgeInsets.zero,
@@ -560,292 +614,6 @@ class _TemplateFormSheetState extends State<_TemplateFormSheet> {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Recurring Generation Sheet ───────────────────────────────
-
-class _RecurringSheet extends StatefulWidget {
-  final Task template;
-  const _RecurringSheet({required this.template});
-
-  @override
-  State<_RecurringSheet> createState() => _RecurringSheetState();
-}
-
-class _RecurringSheetState extends State<_RecurringSheet> {
-  DateTime? _fromDate = DateTime.now();
-  DateTime? _toDate = DateTime.now().add(const Duration(days: 7));
-  final Set<String> _selectedEmployeeIds = {};
-  bool _isSubmitting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadEmployees());
-  }
-
-  Future<void> _loadEmployees() async {
-    final auth = context.read<AuthProvider>();
-    if (auth.profile?.branchId == null) return;
-    await context
-        .read<TaskProvider>()
-        .loadBranchEmployees(auth.profile!.branchId!);
-  }
-
-  List<DateTime> _buildDateList() {
-    if (_fromDate == null || _toDate == null) return [];
-    final dates = <DateTime>[];
-    var d = _fromDate!;
-    while (!d.isAfter(_toDate!)) {
-      dates.add(d);
-      d = d.add(const Duration(days: 1));
-    }
-    return dates;
-  }
-
-  Future<void> _submit() async {
-    if (_fromDate == null || _toDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please select a date range.'),
-        backgroundColor: Colors.red,
-      ));
-      return;
-    }
-    if (_selectedEmployeeIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please select at least one employee.'),
-        backgroundColor: Colors.red,
-      ));
-      return;
-    }
-    final dates = _buildDateList();
-    setState(() => _isSubmitting = true);
-    try {
-      final createdCount = await context.read<TaskProvider>().generateRecurringAssignments(
-            taskId: widget.template.id,
-            userIds: _selectedEmployeeIds.toList(),
-            dates: dates,
-          );
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              '$createdCount assignment(s) created! (Duplicates skipped automatically)'),
-          backgroundColor: Colors.green,
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed: ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: Colors.red,
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final employees = context.watch<TaskProvider>().branchEmployees;
-    final dates = _buildDateList();
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.8,
-      maxChildSize: 0.95,
-      minChildSize: 0.5,
-      builder: (_, controller) => Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: cs.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                controller: controller,
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-                children: [
-                  Text(
-                    'Auto-Generate Recurring Tasks',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: cs.primary),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.template.title,
-                    style: TextStyle(
-                        fontSize: 14,
-                        color: cs.onSurface.withValues(alpha: 0.6)),
-                  ),
-                  const SizedBox(height: 24),
-                  // Date range
-                  const Text('Date Range',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _DatePickerCard(
-                          label: 'From Date',
-                          date: _fromDate,
-                          onTap: () async {
-                            final d = await showDatePicker(
-                              context: context,
-                              initialDate: _fromDate ?? DateTime.now(),
-                              firstDate: DateTime.now()
-                                  .subtract(const Duration(days: 30)),
-                              lastDate: DateTime.now()
-                                  .add(const Duration(days: 365)),
-                            );
-                            if (d != null) setState(() => _fromDate = d);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _DatePickerCard(
-                          label: 'To Date',
-                          date: _toDate,
-                          onTap: () async {
-                            final d = await showDatePicker(
-                              context: context,
-                              initialDate: _toDate ?? DateTime.now().add(const Duration(days: 7)),
-                              firstDate: _fromDate ?? DateTime.now(),
-                              lastDate: DateTime.now()
-                                  .add(const Duration(days: 365)),
-                            );
-                            if (d != null) setState(() => _toDate = d);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (dates.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        '${dates.length} day(s) selected',
-                        style: TextStyle(
-                            fontSize: 12, color: cs.primary),
-                      ),
-                    ),
-                  const SizedBox(height: 20),
-                  // Employees
-                  const Text('Select Employees to Schedule',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 10),
-                  if (employees.isEmpty)
-                    const Text('No branch employees found.')
-                  else
-                    ...employees.map((e) => CheckboxListTile(
-                          title: Text(e.name),
-                          subtitle: Text(e.email),
-                          value: _selectedEmployeeIds.contains(e.id),
-                          onChanged: (v) {
-                            setState(() {
-                              if (v == true) {
-                                _selectedEmployeeIds.add(e.id);
-                              } else {
-                                _selectedEmployeeIds.remove(e.id);
-                              }
-                            });
-                          },
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                        )),
-                  const SizedBox(height: 20),
-                  if (_selectedEmployeeIds.isNotEmpty && dates.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: cs.primaryContainer,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'Will schedule ${dates.length * _selectedEmployeeIds.length} occurrences '
-                        '(${_selectedEmployeeIds.length} employees × ${dates.length} days)',
-                        style: TextStyle(
-                            color: cs.onPrimaryContainer,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  const SizedBox(height: 24),
-                  LoadingButton(
-                    label: 'Generate Assignments',
-                    icon: Icons.auto_awesome,
-                    isLoading: _isSubmitting,
-                    onPressed: _submit,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DatePickerCard extends StatelessWidget {
-  final String label;
-  final DateTime? date;
-  final VoidCallback onTap;
-  const _DatePickerCard(
-      {required this.label, required this.date, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: date != null
-                ? cs.primary
-                : cs.outline.withValues(alpha: 0.5),
-            width: date != null ? 2 : 1,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    color: cs.onSurface.withValues(alpha: 0.5))),
-            const SizedBox(height: 4),
-            Text(
-              date != null
-                  ? '${date!.day}/${date!.month}/${date!.year}'
-                  : 'Tap to pick',
-              style: TextStyle(
-                  fontWeight:
-                      date != null ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: 13),
             ),
           ],
         ),

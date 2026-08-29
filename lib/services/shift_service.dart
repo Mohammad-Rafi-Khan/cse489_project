@@ -77,13 +77,16 @@ class ShiftService {
 
   /// Returns all employee-shift assignments for a given branch and date.
   Future<List<EmployeeShift>> fetchScheduleForDate(
-      String branchId, DateTime date) async {
+    String branchId,
+    DateTime date,
+  ) async {
     final dateStr =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final data = await _supabase
         .from('employee_shifts')
         .select(
-            '*, profiles!employee_shifts_employee_id_fkey(name, branch_id), shifts(name, start_time, end_time)')
+          '*, profiles!employee_shifts_employee_id_fkey(name, branch_id), shifts(name, start_time, end_time)',
+        )
         .eq('work_date', dateStr);
 
     final all = (data as List).map((e) => EmployeeShift.fromMap(e)).toList();
@@ -101,7 +104,10 @@ class ShiftService {
 
   /// Returns the logged-in employee's schedule for a date range.
   Future<List<EmployeeShift>> fetchMySchedule(
-      String userId, DateTime from, DateTime to) async {
+    String userId,
+    DateTime from,
+    DateTime to,
+  ) async {
     final fromStr =
         '${from.year}-${from.month.toString().padLeft(2, '0')}-${from.day.toString().padLeft(2, '0')}';
     final toStr =
@@ -124,25 +130,29 @@ class ShiftService {
   }) async {
     final dateStr =
         '${workDate.year}-${workDate.month.toString().padLeft(2, '0')}-${workDate.day.toString().padLeft(2, '0')}';
+    await _supabase.rpc(
+      'assign_employee_to_shift',
+      params: {
+        'p_employee_id': employeeId,
+        'p_shift_id': shiftId,
+        'p_work_date': dateStr,
+      },
+    );
     final data = await _supabase
         .from('employee_shifts')
-        .insert({
-          'employee_id': employeeId,
-          'shift_id': shiftId,
-          'work_date': dateStr,
-        })
         .select(
-            '*, profiles!employee_shifts_employee_id_fkey(name, branch_id), shifts(name, start_time, end_time)')
+          '*, profiles!employee_shifts_employee_id_fkey(name, branch_id), shifts(name, start_time, end_time)',
+        )
+        .eq('employee_id', employeeId)
+        .eq('shift_id', shiftId)
+        .eq('work_date', dateStr)
         .single();
     return EmployeeShift.fromMap(data);
   }
 
   /// Removes an employee-shift assignment.
   Future<void> removeEmployeeShift(String employeeShiftId) async {
-    await _supabase
-        .from('employee_shifts')
-        .delete()
-        .eq('id', employeeShiftId);
+    await _supabase.from('employee_shifts').delete().eq('id', employeeShiftId);
   }
 
   /// Returns all branch employees for the schedule picker.

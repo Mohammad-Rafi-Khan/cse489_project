@@ -70,10 +70,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
         iconTheme: IconThemeData(color: colorScheme.onPrimary),
@@ -139,7 +136,8 @@ class _EmployeeReportView extends StatelessWidget {
     final approved = data!['approved_count'] as int? ?? 0;
     final rejected = data!['rejected_count'] as int? ?? 0;
     final pending = data!['pending_count'] as int? ?? 0;
-    final completionRate = (data!['completion_rate'] as num?)?.toDouble() ?? 0.0;
+    final completionRate =
+        (data!['completion_rate'] as num?)?.toDouble() ?? 0.0;
     final points = data!['lifetime_points'] as int? ?? 0;
     final badge = data!['badge_name'] as String? ?? 'No Badge';
 
@@ -168,16 +166,31 @@ class _EmployeeReportView extends StatelessWidget {
                               color: Colors.amber.shade100,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.emoji_events, color: Colors.amber.shade800, size: 30),
+                            child: Icon(
+                              Icons.emoji_events,
+                              color: Colors.amber.shade800,
+                              size: 30,
+                            ),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('$badge Badge Tier', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                                Text(
+                                  '$badge Badge Tier',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17,
+                                  ),
+                                ),
                                 const SizedBox(height: 2),
-                                Text('$points Total Lifetime Points Earned', style: TextStyle(color: cs.onSurface.withValues(alpha: 0.6))),
+                                Text(
+                                  '$points Total Lifetime Points Earned',
+                                  style: TextStyle(
+                                    color: cs.onSurface.withValues(alpha: 0.6),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -197,10 +210,20 @@ class _EmployeeReportView extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Task Completion Rate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const Text(
+                                'Task Completion Rate',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                               Text(
                                 '${completionRate.toStringAsFixed(1)}%',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: cs.primary),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: cs.primary,
+                                ),
                               ),
                             ],
                           ),
@@ -211,7 +234,9 @@ class _EmployeeReportView extends StatelessWidget {
                               value: (completionRate / 100).clamp(0.0, 1.0),
                               minHeight: 10,
                               backgroundColor: cs.surfaceContainerHighest,
-                              valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                cs.primary,
+                              ),
                             ),
                           ),
                         ],
@@ -224,19 +249,39 @@ class _EmployeeReportView extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _StatBox(label: 'Assigned', value: '$total', color: Colors.blueGrey, icon: Icons.assignment_outlined),
+                        child: _StatBox(
+                          label: 'Assigned',
+                          value: '$total',
+                          color: Colors.blueGrey,
+                          icon: Icons.assignment_outlined,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _StatBox(label: 'Approved', value: '$approved', color: Colors.green, icon: Icons.verified_outlined),
+                        child: _StatBox(
+                          label: 'Approved',
+                          value: '$approved',
+                          color: Colors.green,
+                          icon: Icons.verified_outlined,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _StatBox(label: 'Rejected', value: '$rejected', color: Colors.red, icon: Icons.cancel_outlined),
+                        child: _StatBox(
+                          label: 'Rejected',
+                          value: '$rejected',
+                          color: Colors.red,
+                          icon: Icons.cancel_outlined,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: _StatBox(label: 'Pending', value: '$pending', color: Colors.orange, icon: Icons.hourglass_empty),
+                        child: _StatBox(
+                          label: 'Pending',
+                          value: '$pending',
+                          color: Colors.orange,
+                          icon: Icons.hourglass_empty,
+                        ),
                       ),
                     ],
                   ),
@@ -281,7 +326,8 @@ class _ManagerReportView extends StatelessWidget {
     final totalTarget = (data!['total_target'] as num?)?.toDouble() ?? 0.0;
     final achievement = (data!['achievement_rate'] as num?)?.toDouble() ?? 0.0;
     final shiftSales = (data!['shift_sales'] as Map<String, dynamic>?) ?? {};
-    final employeeStats = (data!['employee_stats'] as Map<String, dynamic>?) ?? {};
+    final employeeStats =
+        (data!['employee_stats'] as Map<String, dynamic>?) ?? {};
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -296,19 +342,32 @@ class _ManagerReportView extends StatelessWidget {
                 children: [
                   // Date range selector bar
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: cs.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '${dateFormatter.format(startDate)} – ${dateFormatter.format(endDate)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        Expanded(
+                          child: Text(
+                            '${dateFormatter.format(startDate)} - ${dateFormatter.format(endDate)}',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
-                        TextButton(onPressed: onPickDate, child: const Text('Change Dates')),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: onPickDate,
+                          child: const Text('Change Dates'),
+                        ),
                       ],
                     ),
                   ),
@@ -325,18 +384,31 @@ class _ManagerReportView extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Branch Sales vs Target', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const Text(
+                                'Branch Sales vs Target',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: achievement >= 100 ? Colors.green.withValues(alpha: 0.15) : cs.primaryContainer,
+                                  color: achievement >= 100
+                                      ? Colors.green.withValues(alpha: 0.15)
+                                      : cs.primaryContainer,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   '${achievement.toStringAsFixed(1)}% Achieved',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: achievement >= 100 ? Colors.green : cs.primary,
+                                    color: achievement >= 100
+                                        ? Colors.green
+                                        : cs.primary,
                                   ),
                                 ),
                               ),
@@ -349,10 +421,24 @@ class _ManagerReportView extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Actual Revenue', style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.6))),
+                                    Text(
+                                      'Actual Revenue',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: cs.onSurface.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                      ),
+                                    ),
                                     const SizedBox(height: 2),
-                                    Text('৳${currency.format(totalSales)}',
-                                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: cs.primary)),
+                                    Text(
+                                      'BDT ${currency.format(totalSales)}',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: cs.primary,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -360,10 +446,24 @@ class _ManagerReportView extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Target Goal', style: TextStyle(fontSize: 12, color: cs.onSurface.withValues(alpha: 0.6))),
+                                    Text(
+                                      'Target Goal',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: cs.onSurface.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                      ),
+                                    ),
                                     const SizedBox(height: 2),
-                                    Text('৳${currency.format(totalTarget)}',
-                                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                                    Text(
+                                      'BDT ${currency.format(totalTarget)}',
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.deepOrange,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -376,49 +476,95 @@ class _ManagerReportView extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Shift Performance Breakdown
-                  const Text('Sales by Shift', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text(
+                    'Sales by Shift',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 10),
                   if (shiftSales.isEmpty)
-                    const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No shift sales in this range.')))
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('No shift sales in this range.'),
+                      ),
+                    )
                   else
-                    ...shiftSales.entries.map((e) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Icon(Icons.schedule, color: cs.primary),
-                            title: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
-                            trailing: Text(
-                              '৳${currency.format(e.value)}',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: cs.primary),
+                    ...shiftSales.entries.map(
+                      (e) => Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: Icon(Icons.schedule, color: cs.primary),
+                          title: Text(
+                            e.key,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          trailing: Text(
+                            'BDT ${currency.format(e.value)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: cs.primary,
                             ),
                           ),
-                        )),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 20),
 
-                  // Employee Task Completion Leaderboard
-                  const Text('Staff Task Completion Metrics', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  // Staff task completion metrics
+                  const Text(
+                    'Staff Task Completion Metrics',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 10),
                   if (employeeStats.isEmpty)
-                    const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No staff assignments found.')))
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('No staff assignments found.'),
+                      ),
+                    )
                   else
                     ...employeeStats.entries.map((e) {
                       final stats = e.value as Map<String, dynamic>;
                       final approved = stats['approved'] as int? ?? 0;
                       final total = stats['total'] as int? ?? 0;
-                      final rate = total > 0 ? (approved / total * 100).toStringAsFixed(0) : '0';
+                      final rate = total > 0
+                          ? (approved / total * 100).toStringAsFixed(0)
+                          : '0';
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: cs.primaryContainer,
-                            child: Text(e.key.isNotEmpty ? e.key[0].toUpperCase() : 'E'),
+                            child: Text(
+                              e.key.isNotEmpty ? e.key[0].toUpperCase() : 'E',
+                            ),
                           ),
-                          title: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('$approved approved out of $total assigned'),
+                          title: Text(
+                            e.key,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            '$approved approved out of $total assigned',
+                          ),
                           trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8)),
-                            child: Text('$rate% Done', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$rate% Done',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade800,
+                              ),
+                            ),
                           ),
                         ),
                       );
@@ -457,15 +603,19 @@ class _AdminReportView extends StatelessWidget {
     final dateFormatter = DateFormat('dd MMM yyyy');
 
     if (data == null) {
-      return const Center(child: Text('No organization report data available.'));
+      return const Center(
+        child: Text('No organization report data available.'),
+      );
     }
 
     final totalOrgSales = (data!['total_org_sales'] as num?)?.toDouble() ?? 0.0;
-    final totalTx = data!['total_transactions'] as int? ?? 0;
+    final totalImports = data!['total_imports'] as int? ?? 0;
     final totalUsers = data!['total_users'] as int? ?? 0;
     final activeUsers = data!['active_users'] as int? ?? 0;
     final branchSales = (data!['branch_sales'] as Map<String, dynamic>?) ?? {};
-    final badgeDistribution = (data!['badge_distribution'] as Map<String, dynamic>?) ?? {};
+    final badgeDistribution =
+        (data!['badge_distribution'] as Map<String, dynamic>?) ?? {};
+    final topBranches = (data!['top_performing_branches'] as List?) ?? [];
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -480,19 +630,32 @@ class _AdminReportView extends StatelessWidget {
                 children: [
                   // Date range selector bar
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: cs.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '${dateFormatter.format(startDate)} – ${dateFormatter.format(endDate)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        Expanded(
+                          child: Text(
+                            '${dateFormatter.format(startDate)} - ${dateFormatter.format(endDate)}',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
-                        TextButton(onPressed: onPickDate, child: const Text('Change Dates')),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: onPickDate,
+                          child: const Text('Change Dates'),
+                        ),
                       ],
                     ),
                   ),
@@ -508,13 +671,23 @@ class _AdminReportView extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Total Org Sales', style: TextStyle(fontSize: 12)),
+                                const Text(
+                                  'Total Org Sales',
+                                  style: TextStyle(fontSize: 12),
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '৳${currency.format(totalOrgSales)}',
-                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: cs.primary),
+                                  'BDT ${currency.format(totalOrgSales)}',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: cs.primary,
+                                  ),
                                 ),
-                                Text('$totalTx total transactions', style: const TextStyle(fontSize: 11)),
+                                Text(
+                                  '$totalImports sales imports',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                               ],
                             ),
                           ),
@@ -528,13 +701,23 @@ class _AdminReportView extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Staff & Users', style: TextStyle(fontSize: 12)),
+                                const Text(
+                                  'Staff & Users',
+                                  style: TextStyle(fontSize: 12),
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   '$activeUsers / $totalUsers',
-                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.teal),
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.teal,
+                                  ),
                                 ),
-                                const Text('active accounts', style: TextStyle(fontSize: 11)),
+                                const Text(
+                                  'active accounts',
+                                  style: TextStyle(fontSize: 11),
+                                ),
                               ],
                             ),
                           ),
@@ -545,26 +728,66 @@ class _AdminReportView extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Branch Sales Comparison
-                  const Text('Branch Revenue Comparison', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text(
+                    'Branch Revenue Comparison',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 10),
                   if (branchSales.isEmpty)
-                    const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No sales recorded in this timeframe.')))
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('No sales recorded in this timeframe.'),
+                      ),
+                    )
                   else
-                    ...branchSales.entries.map((e) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Icon(Icons.store, color: cs.primary),
-                            title: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
-                            trailing: Text(
-                              '৳${currency.format(e.value)}',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: cs.primary),
+                    ...branchSales.entries.map(
+                      (e) => Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: Icon(Icons.store, color: cs.primary),
+                          title: Text(
+                            e.key,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          trailing: Text(
+                            'BDT ${currency.format(e.value)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: cs.primary,
                             ),
                           ),
-                        )),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    'Top Performing Branches',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 10),
+                  ...topBranches.take(5).toList().asMap().entries.map((entry) {
+                    final row = entry.value as Map<String, dynamic>;
+                    return ListTile(
+                      leading: CircleAvatar(child: Text('${entry.key + 1}')),
+                      title: Text(
+                        row['branch_name'] as String? ?? 'Unknown Branch',
+                      ),
+                      trailing: Text(
+                        'BDT ${currency.format(row['sales'] as num? ?? 0)}',
+                      ),
+                    );
+                  }),
+
                   const SizedBox(height: 20),
 
                   // Badge Distribution
-                  const Text('Employee Badge Distribution', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text(
+                    'Employee Badge Distribution',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 10),
                   Card(
                     child: Padding(
@@ -572,10 +795,21 @@ class _AdminReportView extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _BadgeCount(name: 'Platinum', count: badgeDistribution['Platinum'] ?? 0, color: Colors.blueGrey),
-                          _BadgeCount(name: 'Gold', count: badgeDistribution['Gold'] ?? 0, color: const Color(0xFFFFD700)),
-                          _BadgeCount(name: 'Silver', count: badgeDistribution['Silver'] ?? 0, color: const Color(0xFFC0C0C0)),
-                          _BadgeCount(name: 'Bronze', count: badgeDistribution['Bronze'] ?? 0, color: const Color(0xFFCD7F32)),
+                          _BadgeCount(
+                            name: 'Gold',
+                            count: badgeDistribution['Gold'] ?? 0,
+                            color: const Color(0xFFFFD700),
+                          ),
+                          _BadgeCount(
+                            name: 'Silver',
+                            count: badgeDistribution['Silver'] ?? 0,
+                            color: const Color(0xFFC0C0C0),
+                          ),
+                          _BadgeCount(
+                            name: 'Bronze',
+                            count: badgeDistribution['Bronze'] ?? 0,
+                            color: const Color(0xFFCD7F32),
+                          ),
                         ],
                       ),
                     ),
@@ -613,7 +847,14 @@ class _StatBox extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: color),
             const SizedBox(height: 4),
-            Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
             Text(label, style: const TextStyle(fontSize: 10)),
           ],
         ),
@@ -627,7 +868,11 @@ class _BadgeCount extends StatelessWidget {
   final int count;
   final Color color;
 
-  const _BadgeCount({required this.name, required this.count, required this.color});
+  const _BadgeCount({
+    required this.name,
+    required this.count,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -635,7 +880,10 @@ class _BadgeCount extends StatelessWidget {
       children: [
         Icon(Icons.emoji_events, color: color, size: 24),
         const SizedBox(height: 4),
-        Text('$count', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(
+          '$count',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
         Text(name, style: const TextStyle(fontSize: 11)),
       ],
     );

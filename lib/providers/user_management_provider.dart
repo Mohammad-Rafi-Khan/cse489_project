@@ -14,6 +14,36 @@ class UserManagementProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  Future<UserCreationResult> createUser({
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+    String? branchId,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final result = await _userService.createUser(
+        name: name,
+        email: email,
+        password: password,
+        role: role,
+        branchId: branchId,
+      );
+      await loadUsers();
+      return result;
+    } catch (e) {
+      _errorMessage = _displayError(e);
+      debugPrint('Create user error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> loadUsers() async {
     _isLoading = true;
     _errorMessage = null;
@@ -49,12 +79,23 @@ class UserManagementProvider extends ChangeNotifier {
       );
       _users = _users.map((u) => u.id == id ? updated : u).toList();
     } catch (e) {
-      _errorMessage = 'Failed to update user profile.';
+      _errorMessage = _displayError(e);
       debugPrint('Update user error: $e');
       rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  String _displayError(Object error) {
+    if (error is UserManagementException) {
+      return error.message;
+    }
+    final raw = error.toString().trim();
+    if (raw.startsWith('Exception: ')) {
+      return raw.substring('Exception: '.length);
+    }
+    return raw.isEmpty ? 'User management request failed.' : raw;
   }
 }
