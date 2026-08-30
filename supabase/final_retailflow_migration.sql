@@ -148,6 +148,42 @@ REVOKE EXECUTE ON FUNCTION public.retailflow_current_date() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.retailflow_current_date() TO authenticated;
 
 -- -----------------------------------------------------------------------------
+-- 3a) Repair public branch lookup for employee registration
+-- -----------------------------------------------------------------------------
+-- The registration screen is shown before sign-in, so anonymous clients must be
+-- able to list active branches only. Admins keep authenticated access to all
+-- branches through a separate policy.
+ALTER TABLE public.branches ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.branches TO anon;
+GRANT SELECT, INSERT, UPDATE ON public.branches TO authenticated;
+GRANT ALL ON public.branches TO service_role;
+
+DROP POLICY IF EXISTS "branches_select" ON public.branches;
+DROP POLICY IF EXISTS "branches_select_active_public" ON public.branches;
+DROP POLICY IF EXISTS "branches_select_admin" ON public.branches;
+DROP POLICY IF EXISTS "branches_insert_admin" ON public.branches;
+DROP POLICY IF EXISTS "branches_update_admin" ON public.branches;
+
+CREATE POLICY "branches_select_active_public"
+  ON public.branches FOR SELECT
+  TO anon, authenticated
+  USING (is_active);
+
+CREATE POLICY "branches_select_admin"
+  ON public.branches FOR SELECT
+  TO authenticated
+  USING (public.get_my_role() = 'admin');
+
+CREATE POLICY "branches_insert_admin"
+  ON public.branches FOR INSERT
+  WITH CHECK (public.get_my_role() = 'admin');
+
+CREATE POLICY "branches_update_admin"
+  ON public.branches FOR UPDATE
+  USING (public.get_my_role() = 'admin')
+  WITH CHECK (public.get_my_role() = 'admin');
+
+-- -----------------------------------------------------------------------------
 -- 4) Fix duplicate trigger problem safely
 -- -----------------------------------------------------------------------------
 DO $$

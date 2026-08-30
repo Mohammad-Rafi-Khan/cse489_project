@@ -10,14 +10,18 @@ class AuthProvider extends ChangeNotifier {
   UserProfile? _profile;
   List<Branch> _branches = [];
   bool _isLoading = false;
+  bool _isLoadingBranches = false;
   String? _errorMessage;
+  String? _branchLoadError;
 
   // ─── Getters ──────────────────────────────────────────────
 
   UserProfile? get profile => _profile;
   List<Branch> get branches => _branches;
   bool get isLoading => _isLoading;
+  bool get isLoadingBranches => _isLoadingBranches;
   String? get errorMessage => _errorMessage;
+  String? get branchLoadError => _branchLoadError;
   bool get isAuthenticated => _profile != null;
   String? get role => _profile?.role;
 
@@ -107,11 +111,17 @@ class AuthProvider extends ChangeNotifier {
   // ─── Branches (for registration) ──────────────────────────
 
   Future<void> loadBranches() async {
+    _isLoadingBranches = true;
+    _branchLoadError = null;
+    notifyListeners();
     try {
       _branches = await _authService.fetchBranches();
-      notifyListeners();
     } catch (e) {
       debugPrint('Load branches error: $e');
+      _branchLoadError = _friendlyBranchLoadError(e.toString());
+    } finally {
+      _isLoadingBranches = false;
+      notifyListeners();
     }
   }
 
@@ -183,5 +193,19 @@ class AuthProvider extends ChangeNotifier {
       return 'Unexpected login error: $raw';
     }
     return 'Something went wrong. Please try again.';
+  }
+
+  String _friendlyBranchLoadError(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('permission denied') ||
+        lower.contains('row-level security') ||
+        lower.contains('rls') ||
+        lower.contains('permission')) {
+      return 'Branches could not load. Run the latest Supabase setup or migration so public registration can read active branches.';
+    }
+    if (lower.contains('network') || lower.contains('socket')) {
+      return 'Network error. Please check your internet connection.';
+    }
+    return 'Branches could not load. Please try again.';
   }
 }

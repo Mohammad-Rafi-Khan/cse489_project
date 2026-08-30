@@ -711,6 +711,28 @@ void main() {
       expect(config, isNot(contains('localhost')));
     });
 
+    test('Public registration can load active branches before sign-in', () {
+      final sql = _readSource('supabase/setup.sql');
+      final migration = _readSource('supabase/final_retailflow_migration.sql');
+      final provider = _readSource('lib/providers/auth_provider.dart');
+      final screen = _readSource('lib/screens/auth/registration_screen.dart');
+
+      for (final source in [sql, migration]) {
+        expect(source, contains('GRANT SELECT ON public.branches TO anon'));
+        expect(
+          source,
+          contains('CREATE POLICY "branches_select_active_public"'),
+        );
+        expect(source, contains('TO anon, authenticated'));
+        expect(source, contains('USING (is_active)'));
+        expect(source, contains('CREATE POLICY "branches_select_admin"'));
+      }
+      expect(provider, contains('bool _isLoadingBranches = false;'));
+      expect(provider, contains('String? _branchLoadError;'));
+      expect(provider, contains('_friendlyBranchLoadError'));
+      expect(screen, contains('Retry branch load'));
+    });
+
     test('Sales import route and RPC are admin-only', () {
       final sql = _readSource('supabase/setup.sql');
       final main = _readSource('lib/main.dart');

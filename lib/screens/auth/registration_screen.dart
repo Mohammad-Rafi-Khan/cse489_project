@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/branch.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/loading_button.dart';
@@ -21,7 +20,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  Branch? _selectedBranch;
+  String? _selectedBranchId;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
@@ -45,7 +44,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedBranch == null) {
+    final authProvider = context.read<AuthProvider>();
+    final branchId = _selectedBranchId;
+    final branchIsAvailable = authProvider.branches.any(
+      (branch) => branch.id == branchId,
+    );
+    if (branchId == null || !branchIsAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a branch'),
@@ -55,7 +59,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       return;
     }
 
-    final authProvider = context.read<AuthProvider>();
     authProvider.clearError();
 
     try {
@@ -63,7 +66,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        branchId: _selectedBranch!.id,
+        branchId: branchId,
       );
 
       if (!mounted) return;
@@ -297,8 +300,20 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         const SizedBox(height: 16),
                         Consumer<AuthProvider>(
                           builder: (context, auth, _) {
-                            return DropdownButtonFormField<Branch>(
-                              initialValue: _selectedBranch,
+                            final selectedBranchId =
+                                auth.branches.any(
+                                  (branch) => branch.id == _selectedBranchId,
+                                )
+                                ? _selectedBranchId
+                                : null;
+                            final branchHint = auth.isLoadingBranches
+                                ? 'Loading branches...'
+                                : auth.branches.isEmpty
+                                ? 'No active branches available'
+                                : 'Select your branch';
+
+                            return DropdownButtonFormField<String>(
+                              initialValue: selectedBranchId,
                               isExpanded: true,
                               menuMaxHeight: 320,
                               decoration: InputDecoration(
@@ -319,22 +334,34 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 ),
                                 filled: true,
                                 fillColor: colorScheme.surface,
+                                errorMaxLines: 3,
+                                errorText: auth.branchLoadError,
+                                suffixIcon: auth.isLoadingBranches
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(14),
+                                        child: SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      )
+                                    : null,
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
                                   vertical: 14,
                                 ),
                               ),
                               hint: Text(
-                                auth.branches.isEmpty
-                                    ? 'Loading branches...'
-                                    : 'Select your branch',
+                                branchHint,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               items: auth.branches
                                   .map(
-                                    (b) => DropdownMenuItem<Branch>(
-                                      value: b,
+                                    (b) => DropdownMenuItem<String>(
+                                      value: b.id,
                                       child: Text(
                                         b.name,
                                         maxLines: 1,
@@ -343,14 +370,33 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                     ),
                                   )
                                   .toList(),
-                              onChanged: auth.isLoading
+                              onChanged:
+                                  auth.isLoadingBranches ||
+                                      auth.branches.isEmpty
                                   ? null
-                                  : (branch) => setState(
-                                      () => _selectedBranch = branch,
+                                  : (branchId) => setState(
+                                      () => _selectedBranchId = branchId,
                                     ),
-                              validator: (_) => _selectedBranch == null
+                              validator: (_) => selectedBranchId == null
                                   ? 'Please select a branch'
                                   : null,
+                            );
+                          },
+                        ),
+                        Consumer<AuthProvider>(
+                          builder: (context, auth, _) {
+                            if (auth.branchLoadError == null) {
+                              return const SizedBox.shrink();
+                            }
+                            return Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: auth.isLoadingBranches
+                                    ? null
+                                    : auth.loadBranches,
+                                icon: const Icon(Icons.refresh, size: 18),
+                                label: const Text('Retry branch load'),
+                              ),
                             );
                           },
                         ),
@@ -360,7 +406,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             label: 'Create Account',
                             icon: Icons.person_add_outlined,
                             isLoading: auth.isLoading,
-                            onPressed: _register,
+                            onPressed:
+                                auth.isLoadingBranches || auth.branches.isEmpty
+                                ? null
+                                : _register,
                           ),
                         ),
                       ],

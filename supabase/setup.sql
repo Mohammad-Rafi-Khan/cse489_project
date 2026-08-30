@@ -2212,9 +2212,16 @@ REVOKE UPDATE ON public.task_assignments FROM authenticated;
 REVOKE INSERT, UPDATE ON public.task_completions FROM authenticated;
 
 DROP POLICY IF EXISTS "branches_select" ON public.branches;
-CREATE POLICY "branches_select" ON public.branches FOR SELECT USING (
-  is_active OR public.get_my_role() = 'admin'
-);
+DROP POLICY IF EXISTS "branches_select_active_public" ON public.branches;
+DROP POLICY IF EXISTS "branches_select_admin" ON public.branches;
+CREATE POLICY "branches_select_active_public"
+  ON public.branches FOR SELECT
+  TO anon, authenticated
+  USING (is_active);
+CREATE POLICY "branches_select_admin"
+  ON public.branches FOR SELECT
+  TO authenticated
+  USING (public.get_my_role() = 'admin');
 
 -- Completion review mutations must go through the authorized RPCs.
 DROP POLICY IF EXISTS "task_completions_update" ON public.task_completions;
@@ -2806,6 +2813,7 @@ ALTER TABLE public.sales_import_failures ENABLE ROW LEVEL SECURITY;
 
 -- Grants for the authenticated role (Flutter app sessions).
 GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
+GRANT SELECT ON public.branches TO anon;
 GRANT SELECT, INSERT, UPDATE ON public.branches TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.products TO authenticated;
 GRANT SELECT, INSERT ON public.product_price_history TO authenticated;
@@ -2862,11 +2870,18 @@ CREATE POLICY "profiles_insert_trigger_or_admin" ON public.profiles FOR INSERT
 
 -- ─── Branches policies ─────────────────────────────────────
 DROP POLICY IF EXISTS "branches_select" ON public.branches;
+DROP POLICY IF EXISTS "branches_select_active_public" ON public.branches;
+DROP POLICY IF EXISTS "branches_select_admin" ON public.branches;
 DROP POLICY IF EXISTS "branches_insert_admin" ON public.branches;
 DROP POLICY IF EXISTS "branches_update_admin" ON public.branches;
-CREATE POLICY "branches_select" ON public.branches FOR SELECT USING (
-  is_active OR public.get_my_role() = 'admin'
-);
+CREATE POLICY "branches_select_active_public"
+  ON public.branches FOR SELECT
+  TO anon, authenticated
+  USING (is_active);
+CREATE POLICY "branches_select_admin"
+  ON public.branches FOR SELECT
+  TO authenticated
+  USING (public.get_my_role() = 'admin');
 CREATE POLICY "branches_insert_admin" ON public.branches FOR INSERT
   WITH CHECK (public.get_my_role() = 'admin');
 CREATE POLICY "branches_update_admin" ON public.branches FOR UPDATE
