@@ -50,6 +50,13 @@ New folder/
 *.zip
 branches.csv
 
+# Temporary fix notes/manifests; keep them local only.
+ADMIN_FIX_CHANGELOG.md
+ADMIN_FIX_FILE_MANIFEST.txt
+ADMIN_FIX_README.md
+TASK_AUTOMATION_FIX_README.md
+TASK_TEMPLATE_ONLY_README.md
+
 # Keep project documentation assets in version control.
 !Schema Diagram/
 !Schema Diagram/**
