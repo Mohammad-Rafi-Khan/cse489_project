@@ -44,3 +44,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local exports, temporary folders, and sample data that should not be committed.
+New folder/
+*.zip
+branches.csv
+
+# Keep project documentation assets in version control.
+!Schema Diagram/
+!Schema Diagram/**
+!Wireframe Diagram/
+!Wireframe Diagram/**

@@ -37,6 +37,8 @@ class IssueService {
   Future<IssueReport> createIssue({
     required String branchId,
     required String reportedBy,
+    required String reporterName,
+    required String reporterRole,
     required String title,
     required String description,
     required String priority,
@@ -54,7 +56,84 @@ class IssueService {
         .select('*, branches(name), profiles!issue_reports_reported_by_fkey(name)')
         .single();
 
-    return IssueReport.fromMap(data);
+    final issue = IssueReport.fromMap(data);
+
+    // Dispatch notifications based on who filed the issue.
+    try {
+      await _notifyRecipients(
+        issue: issue,
+        reporterName: reporterName,
+        reporterRole: reporterRole,
+        branchId: branchId,
+      );
+    } catch (e) {
+      // Notification failure must never block issue creation.
+      // ignore: avoid_print
+      print('[IssueService] Notification dispatch failed: $e');
+    }
+
+    return issue;
+  }
+
+  /// Sends in-app notifications to the appropriate audience:
+  /// - Employee files issue  → notify the branch manager
+  /// - Manager files issue   → notify all admins
+  Future<void> _notifyRecipients({
+    required IssueReport issue,
+    required String reporterName,
+    required String reporterRole,
+    required String branchId,
+  }) async {
+    final priorityLabel = issue.priority[0].toUpperCase() +
+        issue.priority.substring(1);
+
+    List<String> recipientIds = [];
+
+    if (reporterRole == 'employee') {
+      // Fetch the manager of this branch.
+      final rows = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'manager')
+          .eq('branch_id', branchId)
+          .eq('is_active', true);
+      recipientIds =
+          (rows as List).map((r) => r['id'] as String).toList();
+    } else if (reporterRole == 'manager') {
+      // Fetch all active admins (admins have no branch).
+      final rows = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin')
+          .eq('is_active', true);
+      recipientIds =
+          (rows as List).map((r) => r['id'] as String).toList();
+    }
+
+    if (recipientIds.isEmpty) return;
+
+    final String notifTitle = reporterRole == 'employee'
+        ? 'New Issue Reported'
+        : 'Manager Issue Escalation';
+
+    final String notifMessage = reporterRole == 'employee'
+        ? '$reporterName reported a $priorityLabel-priority issue: "${issue.title}"'
+        : '$reporterName escalated a $priorityLabel-priority issue to admin: "${issue.title}"';
+
+    final notifications = recipientIds.map((uid) => {
+          'user_id': uid,
+          'type': 'issue_reported',
+          'title': notifTitle,
+          'message': notifMessage,
+          'data': {
+            'issue_id': issue.id,
+            'branch_id': branchId,
+            'priority': issue.priority,
+          },
+          'is_read': false,
+        }).toList();
+
+    await _supabase.from('notifications').insert(notifications);
   }
 
   Future<IssueReport> updateIssueStatus({

@@ -81,6 +81,11 @@ RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT branch_id FROM public.profiles WHERE id = auth.uid() AND is_active = true;
 $$;
 
+CREATE OR REPLACE FUNCTION public.retailflow_current_date()
+RETURNS date LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT (now() AT TIME ZONE 'Asia/Dhaka')::date;
+$$;
+
 CREATE OR REPLACE FUNCTION public.handle_new_retailflow_user()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE selected_branch uuid;
@@ -140,24 +145,58 @@ CREATE TABLE IF NOT EXISTS public.product_price_history (
 CREATE INDEX IF NOT EXISTS idx_product_price_history_product_id
   ON public.product_price_history(product_id, updated_at DESC);
 
+CREATE OR REPLACE FUNCTION public.log_product_price_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.current_price IS DISTINCT FROM OLD.current_price THEN
+    INSERT INTO public.product_price_history (
+      product_id,
+      old_price,
+      new_price,
+      updated_by,
+      updated_at
+    )
+    VALUES (
+      NEW.id,
+      COALESCE(OLD.current_price, 0),
+      COALESCE(NEW.current_price, 0),
+      COALESCE(NEW.updated_by, auth.uid()),
+      now()
+    );
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS products_price_history_log ON public.products;
+CREATE TRIGGER products_price_history_log
+BEFORE UPDATE ON public.products
+FOR EACH ROW
+WHEN (NEW.current_price IS DISTINCT FROM OLD.current_price)
+EXECUTE FUNCTION public.log_product_price_change();
+
 CREATE TABLE IF NOT EXISTS public.attendance (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   branch_id uuid NOT NULL REFERENCES public.branches(id) ON DELETE CASCADE,
-  date date NOT NULL,
-  check_in_time time,
-  check_out_time time,
+  attendance_date date NOT NULL,
+  check_in_time timestamptz,
+  check_out_time timestamptz,
   status text NOT NULL DEFAULT 'present'
     CHECK (status IN ('present', 'late', 'absent', 'half_day')),
-  notes text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (employee_id, date)
+  UNIQUE (employee_id, attendance_date)
 );
 CREATE INDEX IF NOT EXISTS idx_attendance_employee_date
-  ON public.attendance(employee_id, date DESC);
+  ON public.attendance(employee_id, attendance_date DESC);
 CREATE INDEX IF NOT EXISTS idx_attendance_branch_date
-  ON public.attendance(branch_id, date DESC);
+  ON public.attendance(branch_id, attendance_date DESC);
 
 CREATE TABLE IF NOT EXISTS public.shifts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -837,22 +876,111 @@ CREATE TRIGGER leave_requests_touch_updated_at
 BEFORE UPDATE ON public.leave_requests
 FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 
+CREATE OR REPLACE FUNCTION public.enforce_employee_attendance_write()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  caller_id uuid := auth.uid();
+  caller_role text := public.get_my_role();
+  caller_branch uuid;
+BEGIN
+  IF caller_id IS NULL OR caller_role <> 'employee' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT branch_id INTO caller_branch
+  FROM public.profiles
+  WHERE id = caller_id
+    AND role = 'employee'
+    AND is_active = true;
+
+  IF NEW.employee_id IS DISTINCT FROM caller_id
+     OR NEW.branch_id IS DISTINCT FROM caller_branch
+     OR NEW.attendance_date IS DISTINCT FROM public.retailflow_current_date() THEN
+    RAISE EXCEPTION 'Employees can only write their own attendance for today';
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.check_in_time IS NULL THEN
+      RAISE EXCEPTION 'Check-in time is required';
+    END IF;
+    NEW.check_out_time := NULL;
+    IF NEW.status NOT IN ('present', 'late') THEN
+      NEW.status := 'present';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.employee_id IS DISTINCT FROM OLD.employee_id
+     OR NEW.branch_id IS DISTINCT FROM OLD.branch_id
+     OR NEW.attendance_date IS DISTINCT FROM OLD.attendance_date THEN
+    RAISE EXCEPTION 'Attendance identity fields cannot be changed';
+  END IF;
+
+  IF OLD.check_in_time IS NULL THEN
+    IF NEW.check_in_time IS NULL THEN
+      RAISE EXCEPTION 'Check-in time is required';
+    END IF;
+    IF NEW.check_out_time IS NOT NULL THEN
+      RAISE EXCEPTION 'Check in before checking out';
+    END IF;
+    IF NEW.status NOT IN ('present', 'late') THEN
+      NEW.status := 'present';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.check_in_time IS DISTINCT FROM OLD.check_in_time THEN
+    RAISE EXCEPTION 'Check-in time cannot be changed after it is recorded';
+  END IF;
+
+  IF OLD.check_out_time IS NOT NULL
+     AND NEW.check_out_time IS DISTINCT FROM OLD.check_out_time THEN
+    RAISE EXCEPTION 'Check-out time cannot be changed after it is recorded';
+  END IF;
+
+  NEW.status := OLD.status;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS attendance_employee_write_guard ON public.attendance;
+CREATE TRIGGER attendance_employee_write_guard
+BEFORE INSERT OR UPDATE ON public.attendance
+FOR EACH ROW EXECUTE FUNCTION public.enforce_employee_attendance_write();
+
+DROP TRIGGER IF EXISTS attendance_touch_updated_at ON public.attendance;
+CREATE TRIGGER attendance_touch_updated_at
+BEFORE UPDATE ON public.attendance
+FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+
 DROP POLICY IF EXISTS "issue_reports_select_own" ON public.issue_reports;
 DROP POLICY IF EXISTS "issue_reports_select_branch" ON public.issue_reports;
+DROP POLICY IF EXISTS "issue_reports_select_admin" ON public.issue_reports;
 DROP POLICY IF EXISTS "issue_reports_insert" ON public.issue_reports;
 DROP POLICY IF EXISTS "issue_reports_update" ON public.issue_reports;
 CREATE POLICY "issue_reports_select_own" ON public.issue_reports FOR SELECT USING (reported_by = auth.uid());
 CREATE POLICY "issue_reports_select_branch" ON public.issue_reports FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM public.profiles p
-    WHERE p.id = auth.uid() AND p.branch_id = public.issue_reports.branch_id
-  ) OR public.get_my_role() IN ('manager', 'admin')
+  public.get_my_role() = 'manager'
+  AND branch_id = public.get_my_branch_id()
+);
+CREATE POLICY "issue_reports_select_admin" ON public.issue_reports FOR SELECT USING (
+  public.get_my_role() = 'admin'
 );
 CREATE POLICY "issue_reports_insert" ON public.issue_reports FOR INSERT WITH CHECK (
-  reported_by = auth.uid() AND branch_id IS NOT NULL
+  reported_by = auth.uid() AND branch_id = public.get_my_branch_id()
 );
 CREATE POLICY "issue_reports_update" ON public.issue_reports FOR UPDATE USING (
-  reported_by = auth.uid() OR public.get_my_role() IN ('manager', 'admin')
+  reported_by = auth.uid()
+  OR public.get_my_role() = 'admin'
+  OR (public.get_my_role() = 'manager' AND branch_id = public.get_my_branch_id())
+) WITH CHECK (
+  (reported_by = auth.uid() AND branch_id = public.get_my_branch_id())
+  OR public.get_my_role() = 'admin'
+  OR (public.get_my_role() = 'manager' AND branch_id = public.get_my_branch_id())
 );
 
 DROP POLICY IF EXISTS "leave_requests_select_own" ON public.leave_requests;
@@ -861,16 +989,25 @@ DROP POLICY IF EXISTS "leave_requests_insert" ON public.leave_requests;
 DROP POLICY IF EXISTS "leave_requests_update" ON public.leave_requests;
 CREATE POLICY "leave_requests_select_own" ON public.leave_requests FOR SELECT USING (employee_id = auth.uid());
 CREATE POLICY "leave_requests_select_branch" ON public.leave_requests FOR SELECT USING (
-  EXISTS (
+  public.get_my_role() = 'admin'
+  OR (public.get_my_role() = 'manager' AND EXISTS (
     SELECT 1 FROM public.profiles p
-    WHERE p.id = auth.uid() AND p.branch_id = public.leave_requests.branch_id
-  ) OR public.get_my_role() IN ('manager', 'admin')
+    WHERE p.id = auth.uid()
+      AND p.is_active = true
+      AND p.role = 'manager'
+      AND p.branch_id = public.leave_requests.branch_id
+  ))
 );
 CREATE POLICY "leave_requests_insert" ON public.leave_requests FOR INSERT WITH CHECK (
-  employee_id = auth.uid() AND branch_id IS NOT NULL
-);
-CREATE POLICY "leave_requests_update" ON public.leave_requests FOR UPDATE USING (
-  employee_id = auth.uid() OR public.get_my_role() IN ('manager', 'admin')
+  employee_id = auth.uid()
+  AND status = 'pending'
+  AND EXISTS (
+    SELECT 1 FROM public.profiles p
+    WHERE p.id = auth.uid()
+      AND p.is_active = true
+      AND p.role = 'employee'
+      AND p.branch_id = public.leave_requests.branch_id
+  )
 );
 
 CREATE OR REPLACE FUNCTION public.audit_business_row_change()
@@ -1555,12 +1692,12 @@ BEGIN
     RAISE EXCEPTION 'Only managers, admins, or the scheduler can mark absent employees';
   END IF;
 
-  IF current_time < '09:30:00' THEN
+  IF (now() AT TIME ZONE 'Asia/Dhaka')::time < '09:30:00' THEN
     RETURN 0;
   END IF;
 
-  INSERT INTO public.attendance (employee_id, branch_id, date, status, notes)
-  SELECT p.id, p.branch_id, current_date, 'absent', 'Auto-marked absent after daily cutoff.'
+  INSERT INTO public.attendance (employee_id, branch_id, attendance_date, status)
+  SELECT p.id, p.branch_id, public.retailflow_current_date(), 'absent'
   FROM public.profiles p
   WHERE p.is_active = true
     AND p.role = 'employee'
@@ -1569,9 +1706,9 @@ BEGIN
       SELECT 1
       FROM public.attendance a
       WHERE a.employee_id = p.id
-        AND a.date = current_date
+        AND a.attendance_date = public.retailflow_current_date()
     )
-  ON CONFLICT (employee_id, date) DO NOTHING;
+  ON CONFLICT (employee_id, attendance_date) DO NOTHING;
 
   GET DIAGNOSTICS v_inserted_count = ROW_COUNT;
   RETURN v_inserted_count;
@@ -1955,11 +2092,17 @@ CREATE POLICY "tasks_modify_scoped" ON public.tasks FOR ALL USING (
 DROP POLICY IF EXISTS "products_select" ON public.products;
 DROP POLICY IF EXISTS "products_modify_manager_admin" ON public.products;
 DROP POLICY IF EXISTS "products_select_manager_admin" ON public.products;
+DROP POLICY IF EXISTS "products_select_auth" ON public.products;
 DROP POLICY IF EXISTS "products_modify_manager_admin_final" ON public.products;
-CREATE POLICY "products_select_manager_admin" ON public.products FOR SELECT USING (
+DROP POLICY IF EXISTS "products_insert_manager_admin" ON public.products;
+DROP POLICY IF EXISTS "products_update_manager_admin" ON public.products;
+CREATE POLICY "products_select_auth" ON public.products FOR SELECT USING (
+  auth.uid() IS NOT NULL
+);
+CREATE POLICY "products_insert_manager_admin" ON public.products FOR INSERT WITH CHECK (
   public.get_my_role() IN ('manager', 'admin')
 );
-CREATE POLICY "products_modify_manager_admin_final" ON public.products FOR ALL USING (
+CREATE POLICY "products_update_manager_admin" ON public.products FOR UPDATE USING (
   public.get_my_role() IN ('manager', 'admin')
 ) WITH CHECK (
   public.get_my_role() IN ('manager', 'admin')
@@ -2652,6 +2795,10 @@ REVOKE EXECUTE ON FUNCTION public.seed_demo_presentation_data()
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.branches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_price_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.leave_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.issue_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sales_targets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sales_imports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sales_import_items ENABLE ROW LEVEL SECURITY;
@@ -2661,6 +2808,12 @@ ALTER TABLE public.sales_import_failures ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE ON public.profiles TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.branches TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.products TO authenticated;
+GRANT SELECT, INSERT ON public.product_price_history TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.attendance TO authenticated;
+GRANT SELECT, INSERT ON public.leave_requests TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.issue_reports TO authenticated;
+REVOKE UPDATE, DELETE ON public.product_price_history FROM authenticated;
+REVOKE UPDATE, DELETE ON public.leave_requests FROM authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.sales_targets TO authenticated;
 GRANT SELECT ON public.sales_imports TO authenticated;
 GRANT SELECT ON public.sales_import_items TO authenticated;
@@ -2671,6 +2824,10 @@ GRANT SELECT ON public.sales_import_failures TO authenticated;
 GRANT ALL ON public.profiles TO service_role;
 GRANT ALL ON public.branches TO service_role;
 GRANT ALL ON public.products TO service_role;
+GRANT ALL ON public.product_price_history TO service_role;
+GRANT ALL ON public.attendance TO service_role;
+GRANT ALL ON public.leave_requests TO service_role;
+GRANT ALL ON public.issue_reports TO service_role;
 GRANT ALL ON public.sales_targets TO service_role;
 GRANT ALL ON public.sales_imports TO service_role;
 GRANT ALL ON public.sales_import_items TO service_role;
@@ -2679,8 +2836,10 @@ GRANT ALL ON public.sales_import_failures TO service_role;
 -- Helper function grants.
 REVOKE EXECUTE ON FUNCTION public.get_my_role() FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.get_my_branch_id() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.retailflow_current_date() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_branch_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.retailflow_current_date() TO authenticated;
 
 -- ─── Profiles policies ─────────────────────────────────────
 DROP POLICY IF EXISTS "profiles_select_all_authenticated" ON public.profiles;
@@ -2714,15 +2873,117 @@ CREATE POLICY "branches_update_admin" ON public.branches FOR UPDATE
   USING (public.get_my_role() = 'admin')
   WITH CHECK (public.get_my_role() = 'admin');
 
+-- Attendance policies
+DROP POLICY IF EXISTS "attendance_select_own" ON public.attendance;
+DROP POLICY IF EXISTS "attendance_select_branch" ON public.attendance;
+DROP POLICY IF EXISTS "attendance_select_admin" ON public.attendance;
+DROP POLICY IF EXISTS "attendance_insert_own" ON public.attendance;
+DROP POLICY IF EXISTS "attendance_insert_employee_today" ON public.attendance;
+DROP POLICY IF EXISTS "attendance_update_own" ON public.attendance;
+DROP POLICY IF EXISTS "attendance_employee_checkout_today" ON public.attendance;
+DROP POLICY IF EXISTS "attendance_admin_full" ON public.attendance;
+
+CREATE POLICY "attendance_select_own" ON public.attendance FOR SELECT USING (
+  employee_id = auth.uid()
+);
+CREATE POLICY "attendance_select_branch" ON public.attendance FOR SELECT USING (
+  public.get_my_role() = 'manager'
+  AND branch_id = public.get_my_branch_id()
+);
+CREATE POLICY "attendance_select_admin" ON public.attendance FOR SELECT USING (
+  public.get_my_role() = 'admin'
+);
+CREATE POLICY "attendance_insert_employee_today" ON public.attendance FOR INSERT WITH CHECK (
+  employee_id = auth.uid()
+  AND attendance_date = public.retailflow_current_date()
+  AND status IN ('present', 'late')
+  AND check_out_time IS NULL
+  AND EXISTS (
+    SELECT 1
+    FROM public.profiles p
+    WHERE p.id = auth.uid()
+      AND p.is_active = true
+      AND p.role = 'employee'
+      AND p.branch_id = public.attendance.branch_id
+  )
+);
+CREATE POLICY "attendance_employee_checkout_today" ON public.attendance FOR UPDATE USING (
+  employee_id = auth.uid()
+  AND attendance_date = public.retailflow_current_date()
+) WITH CHECK (
+  employee_id = auth.uid()
+  AND attendance_date = public.retailflow_current_date()
+  AND status IN ('present', 'late')
+  AND EXISTS (
+    SELECT 1
+    FROM public.profiles p
+    WHERE p.id = auth.uid()
+      AND p.is_active = true
+      AND p.role = 'employee'
+      AND p.branch_id = public.attendance.branch_id
+  )
+);
+
+-- Leave request policies
+DROP POLICY IF EXISTS "leave_requests_select_own" ON public.leave_requests;
+DROP POLICY IF EXISTS "leave_requests_select_branch" ON public.leave_requests;
+DROP POLICY IF EXISTS "leave_requests_select_admin" ON public.leave_requests;
+DROP POLICY IF EXISTS "leave_requests_insert" ON public.leave_requests;
+DROP POLICY IF EXISTS "leave_requests_insert_employee_own" ON public.leave_requests;
+DROP POLICY IF EXISTS "leave_requests_update" ON public.leave_requests;
+DROP POLICY IF EXISTS "leave_requests_update_manager_admin" ON public.leave_requests;
+
+CREATE POLICY "leave_requests_select_own" ON public.leave_requests FOR SELECT USING (
+  employee_id = auth.uid()
+);
+CREATE POLICY "leave_requests_select_branch" ON public.leave_requests FOR SELECT USING (
+  public.get_my_role() = 'manager'
+  AND branch_id = public.get_my_branch_id()
+);
+CREATE POLICY "leave_requests_select_admin" ON public.leave_requests FOR SELECT USING (
+  public.get_my_role() = 'admin'
+);
+CREATE POLICY "leave_requests_insert_employee_own" ON public.leave_requests FOR INSERT WITH CHECK (
+  employee_id = auth.uid()
+  AND status = 'pending'
+  AND EXISTS (
+    SELECT 1
+    FROM public.profiles p
+    WHERE p.id = auth.uid()
+      AND p.is_active = true
+      AND p.role = 'employee'
+      AND p.branch_id = public.leave_requests.branch_id
+  )
+);
+
+-- Product price history policies
+DROP POLICY IF EXISTS "product_price_history_select_auth" ON public.product_price_history;
+DROP POLICY IF EXISTS "product_price_history_insert_manager_admin" ON public.product_price_history;
+DROP POLICY IF EXISTS "product_price_history_update_manager_admin" ON public.product_price_history;
+DROP POLICY IF EXISTS "product_price_history_admin_full" ON public.product_price_history;
+
+CREATE POLICY "product_price_history_select_auth" ON public.product_price_history FOR SELECT USING (
+  auth.uid() IS NOT NULL
+);
+CREATE POLICY "product_price_history_insert_manager_admin" ON public.product_price_history FOR INSERT WITH CHECK (
+  public.get_my_role() IN ('manager', 'admin')
+);
+
 -- ─── Products policies ─────────────────────────────────────
 DROP POLICY IF EXISTS "products_select" ON public.products;
 DROP POLICY IF EXISTS "products_select_manager_admin" ON public.products;
+DROP POLICY IF EXISTS "products_select_auth" ON public.products;
 DROP POLICY IF EXISTS "products_modify_manager_admin" ON public.products;
 DROP POLICY IF EXISTS "products_modify_manager_admin_final" ON public.products;
-CREATE POLICY "products_select_manager_admin" ON public.products FOR SELECT USING (
+DROP POLICY IF EXISTS "products_insert_manager_admin" ON public.products;
+DROP POLICY IF EXISTS "products_update_manager_admin" ON public.products;
+CREATE POLICY "products_select_auth" ON public.products FOR SELECT USING (
+  auth.uid() IS NOT NULL
+);
+CREATE POLICY "products_insert_manager_admin" ON public.products FOR INSERT WITH CHECK (
   public.get_my_role() IN ('manager', 'admin')
 );
-CREATE POLICY "products_modify_manager_admin_final" ON public.products FOR ALL USING (
+CREATE POLICY "products_update_manager_admin" ON public.products FOR UPDATE USING (
   public.get_my_role() IN ('manager', 'admin')
 ) WITH CHECK (
   public.get_my_role() IN ('manager', 'admin')

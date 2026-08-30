@@ -404,19 +404,20 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                         const SizedBox(height: 10),
                         _DashboardTile(
                           icon: Icons.report_problem_outlined,
-                          title: 'Issue Reporting',
+                          title: 'Report an Issue',
                           subtitle:
-                              'Log operational issues and track status updates',
+                              'Report branch problems to your manager — they\'re notified instantly',
                           color: Colors.red,
                           onTap: () => Navigator.pushNamed(
                             context,
                             '/issues',
                           ).then((_) => _loadData()),
                         ),
+
                         const SizedBox(height: 10),
                         _DashboardTile(
                           icon: Icons.event_available_outlined,
-                          title: 'Leave Requests',
+                          title: 'Request Leave',
                           subtitle:
                               'Submit leave requests and review your history',
                           color: Colors.green,

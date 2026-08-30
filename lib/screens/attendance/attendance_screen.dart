@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/attendance.dart';
+import '../../models/user_profile.dart';
 import '../../providers/attendance_provider.dart';
 import '../../providers/auth_provider.dart';
 
-/// A simple operational attendance screen for employee, manager, and admin views.
+/// Simple attendance view for employee check-in/out and scoped history.
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
 
@@ -20,101 +22,76 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _loadData() async {
-    final auth = context.read<AuthProvider>();
-    final profile = auth.profile;
+    final profile = context.read<AuthProvider>().profile;
     if (profile == null) return;
 
     final provider = context.read<AttendanceProvider>();
     if (profile.isEmployee) {
       await provider.loadMyAttendance(profile.id);
-    } else if (profile.isManager) {
+      return;
+    }
+    if (profile.isManager) {
       final branchId = profile.branchId;
       if (branchId != null) {
         await provider.loadBranchAttendance(branchId);
       }
-    } else {
-      await provider.loadAllAttendance();
+      return;
+    }
+    await provider.loadAllAttendance();
+  }
+
+  Future<void> _checkIn(UserProfile profile) async {
+    final branchId = profile.branchId;
+    if (branchId == null || branchId.trim().isEmpty) {
+      _showMessage('Your profile is missing a branch.');
+      return;
+    }
+
+    try {
+      await context.read<AttendanceProvider>().checkInToday(
+        employeeId: profile.id,
+        branchId: branchId,
+      );
+      if (!mounted) return;
+      _showMessage('Checked in successfully.');
+      await _loadData();
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('Check in failed: $error');
     }
   }
 
-  Future<void> _showStatusEditor(BuildContext context, Attendance attendance) async {
-    final provider = context.read<AttendanceProvider>();
-    String selectedStatus = attendance.status;
-    final notesController = TextEditingController(text: attendance.notes ?? '');
-
-    final didUpdate = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Update attendance status'),
-          content: StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedStatus,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                    items: const [
-                      DropdownMenuItem(value: 'present', child: Text('Present')),
-                      DropdownMenuItem(value: 'late', child: Text('Late')),
-                      DropdownMenuItem(value: 'absent', child: Text('Absent')),
-                      DropdownMenuItem(value: 'half_day', child: Text('Half Day')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => selectedStatus = value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: notesController,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Note (optional)',
-                      hintText: 'Add a reason or override note',
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final note = notesController.text.trim();
-                await provider.updateAttendanceStatus(
-                  id: attendance.id,
-                  status: selectedStatus,
-                  notes: note.isEmpty ? null : note,
-                );
-                if (context.mounted) {
-                  Navigator.pop(dialogContext, true);
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (didUpdate == true && mounted) {
-      await _loadData();
+  Future<void> _checkOut(UserProfile profile) async {
+    final branchId = profile.branchId;
+    if (branchId == null || branchId.trim().isEmpty) {
+      _showMessage('Your profile is missing a branch.');
+      return;
     }
+
+    try {
+      await context.read<AttendanceProvider>().checkOutToday(
+        employeeId: profile.id,
+        branchId: branchId,
+      );
+      if (!mounted) return;
+      _showMessage('Checked out successfully.');
+      await _loadData();
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('Check out failed: $error');
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final auth = context.watch<AuthProvider>();
-    final profile = auth.profile;
+    final profile = context.watch<AuthProvider>().profile;
 
     if (profile == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -122,126 +99,348 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Attendance', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Attendance',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
       ),
       body: Consumer<AttendanceProvider>(
         builder: (context, provider, _) {
-          final list = profile.isEmployee
+          final records = profile.isEmployee
               ? provider.myAttendance
               : profile.isManager
-                  ? provider.branchAttendance
-                  : provider.allAttendance;
+              ? provider.branchAttendance
+              : provider.allAttendance;
+          final today = DateTime.now();
+          final todayRecords = records
+              .where((record) => _sameDay(record.date, today))
+              .toList();
+          final historyRecords = profile.isEmployee
+              ? records
+              : records
+                    .where((record) => !_sameDay(record.date, today))
+                    .toList();
+          final todayRecord = profile.isEmployee
+              ? _todayRecord(records, profile.id, today)
+              : null;
 
-          if (provider.isLoading && list.isEmpty) {
+          if (provider.isLoading && records.isEmpty) {
             return const Center(child: CircularProgressIndicator());
-          }
-
-          if (list.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.event_available_outlined, size: 56, color: colorScheme.primary.withValues(alpha: 0.55)),
-                    const SizedBox(height: 12),
-                    const Text('No attendance records yet', style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    Text(
-                      profile.isEmployee
-                          ? 'Check in to start your attendance history.'
-                          : 'No records are available for this scope yet.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.65)),
-                    ),
-                  ],
-                ),
-              ),
-            );
           }
 
           return RefreshIndicator(
             onRefresh: _loadData,
-            child: ListView.builder(
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              itemBuilder: (context, index) {
-                final attendance = list[index];
-                final canEdit = !profile.isEmployee && (profile.isManager || profile.isAdmin);
-                return _AttendanceCard(
-                  attendance: attendance,
-                  isEmployee: profile.isEmployee,
-                  canEdit: canEdit,
-                  onEdit: canEdit ? () => _showStatusEditor(context, attendance) : null,
-                );
-              },
+              children: [
+                if (profile.isEmployee) ...[
+                  _EmployeeAttendanceActions(
+                    todayRecord: todayRecord,
+                    isLoading: provider.isLoading,
+                    onCheckIn: () => _checkIn(profile),
+                    onCheckOut: () => _checkOut(profile),
+                  ),
+                  const SizedBox(height: 18),
+                  const _SectionTitle(
+                    title: 'Attendance History',
+                    subtitle: 'Your check-in and check-out records',
+                  ),
+                  const SizedBox(height: 10),
+                  if (historyRecords.isEmpty)
+                    const _InlineEmptyState(
+                      message: 'No attendance records yet.',
+                    )
+                  else
+                    ...historyRecords.map(
+                      (attendance) => _AttendanceCard(
+                        attendance: attendance,
+                        showEmployee: false,
+                        showBranch: false,
+                      ),
+                    ),
+                ] else ...[
+                  _AttendanceSummary(
+                    records: todayRecords,
+                    isAdmin: profile.isAdmin,
+                  ),
+                  const SizedBox(height: 18),
+                  const _SectionTitle(
+                    title: "Today's Attendance",
+                    subtitle: 'Employees with check-in records today',
+                  ),
+                  const SizedBox(height: 10),
+                  if (todayRecords.isEmpty)
+                    const _InlineEmptyState(
+                      message: 'No attendance records for today.',
+                    )
+                  else
+                    ...todayRecords.map(
+                      (attendance) => _AttendanceCard(
+                        attendance: attendance,
+                        showEmployee: true,
+                        showBranch: profile.isAdmin,
+                      ),
+                    ),
+                  const SizedBox(height: 18),
+                  const _SectionTitle(
+                    title: 'Attendance History',
+                    subtitle: 'Previous attendance records',
+                  ),
+                  const SizedBox(height: 10),
+                  if (historyRecords.isEmpty)
+                    const _InlineEmptyState(
+                      message: 'No historical attendance records.',
+                    )
+                  else
+                    ...historyRecords.map(
+                      (attendance) => _AttendanceCard(
+                        attendance: attendance,
+                        showEmployee: true,
+                        showBranch: profile.isAdmin,
+                      ),
+                    ),
+                ],
+              ],
             ),
           );
         },
       ),
-      floatingActionButton: profile.isEmployee
-          ? FloatingActionButton.extended(
-              onPressed: () async {
-                final provider = context.read<AttendanceProvider>();
-                try {
-                  final today = DateTime.now();
-                  final existing = provider.myAttendance.firstWhere(
-                    (item) => item.date.year == today.year && item.date.month == today.month && item.date.day == today.day,
-                    orElse: () => Attendance(
-                      id: '',
-                      employeeId: profile.id,
-                      branchId: profile.branchId ?? '',
-                      date: today,
-                      status: 'present',
-                      createdAt: today,
-                      updatedAt: today,
-                    ),
-                  );
+    );
+  }
 
-                  if (existing.id.isEmpty || existing.checkInTime == null) {
-                    await provider.checkInToday(
-                      employeeId: profile.id,
-                      branchId: profile.branchId ?? '',
-                    );
-                  } else if (existing.checkOutTime == null) {
-                    await provider.checkOutToday(
-                      employeeId: profile.id,
-                      branchId: profile.branchId ?? '',
-                    );
-                  }
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Attendance updated successfully.')),
-                  );
-                  await _loadData();
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Attendance update failed: $e')),
-                  );
-                }
-              },
-              icon: const Icon(Icons.fingerprint),
-              label: const Text('Check In / Out'),
-            )
-          : null,
+  Attendance? _todayRecord(
+    List<Attendance> records,
+    String employeeId,
+    DateTime today,
+  ) {
+    for (final record in records) {
+      if (record.employeeId == employeeId && _sameDay(record.date, today)) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  bool _sameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+}
+
+class _EmployeeAttendanceActions extends StatelessWidget {
+  final Attendance? todayRecord;
+  final bool isLoading;
+  final VoidCallback onCheckIn;
+  final VoidCallback onCheckOut;
+
+  const _EmployeeAttendanceActions({
+    required this.todayRecord,
+    required this.isLoading,
+    required this.onCheckIn,
+    required this.onCheckOut,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCheckedIn = todayRecord?.checkInTime != null;
+    final hasCheckedOut = todayRecord?.checkOutTime != null;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Today',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                SizedBox(
+                  width: 160,
+                  child: FilledButton.icon(
+                    onPressed: !isLoading && !hasCheckedIn ? onCheckIn : null,
+                    icon: const Icon(Icons.login_outlined),
+                    label: const Text('Check In'),
+                  ),
+                ),
+                SizedBox(
+                  width: 160,
+                  child: OutlinedButton.icon(
+                    onPressed: !isLoading && hasCheckedIn && !hasCheckedOut
+                        ? onCheckOut
+                        : null,
+                    icon: const Icon(Icons.logout_outlined),
+                    label: const Text('Check Out'),
+                  ),
+                ),
+              ],
+            ),
+            if (todayRecord != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Check In: ${todayRecord!.checkInTime ?? '-'}    Check Out: ${todayRecord!.checkOutTime ?? '-'}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttendanceSummary extends StatelessWidget {
+  final List<Attendance> records;
+  final bool isAdmin;
+
+  const _AttendanceSummary({required this.records, required this.isAdmin});
+
+  @override
+  Widget build(BuildContext context) {
+    final present = records
+        .where((record) => record.status == 'present')
+        .length;
+    final late = records.where((record) => record.status == 'late').length;
+    final checkedOut = records
+        .where((record) => record.checkOutTime != null)
+        .length;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isAdmin ? 'All Branches Today' : 'Branch Today',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _SummaryChip(label: 'Checked In', value: records.length),
+                _SummaryChip(label: 'Present', value: present),
+                _SummaryChip(label: 'Late', value: late),
+                _SummaryChip(label: 'Checked Out', value: checkedOut),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  final String label;
+  final int value;
+
+  const _SummaryChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 132,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value.toString(),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.65),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _SectionTitle({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(
+            color: colorScheme.onSurface.withValues(alpha: 0.62),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InlineEmptyState extends StatelessWidget {
+  final String message;
+
+  const _InlineEmptyState({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.62)),
+      ),
     );
   }
 }
 
 class _AttendanceCard extends StatelessWidget {
   final Attendance attendance;
-  final bool isEmployee;
-  final bool canEdit;
-  final VoidCallback? onEdit;
+  final bool showEmployee;
+  final bool showBranch;
 
   const _AttendanceCard({
     required this.attendance,
-    required this.isEmployee,
-    this.canEdit = false,
-    this.onEdit,
+    required this.showEmployee,
+    required this.showBranch,
   });
 
   @override
@@ -255,7 +454,7 @@ class _AttendanceCard extends StatelessWidget {
     };
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -265,72 +464,62 @@ class _AttendanceCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    isEmployee ? 'Attendance Record' : (attendance.employeeName ?? 'Employee'),
+                    showEmployee
+                        ? attendance.employeeName ?? 'Employee'
+                        : 'Attendance Record',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     attendance.statusLabel,
-                    style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 12),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              '${attendance.date.day}/${attendance.date.month}/${attendance.date.year}',
-              style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+              _dateLabel(attendance.date),
+              style: TextStyle(
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
             ),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 18,
+              runSpacing: 6,
               children: [
-                Expanded(
-                  child: Text(
-                    'Check In: ${attendance.checkInTime ?? '—'}',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
+                Text(
+                  'Check In: ${attendance.checkInTime ?? '-'}',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
-                Expanded(
-                  child: Text(
-                    'Check Out: ${attendance.checkOutTime ?? '—'}',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
+                Text(
+                  'Check Out: ${attendance.checkOutTime ?? '-'}',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
               ],
             ),
-            if (!isEmployee) ...[
+            if (showBranch) ...[
               const SizedBox(height: 6),
               Text(
                 'Branch: ${attendance.branchName ?? 'Branch'}',
-                style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
-              ),
-            ],
-            if (attendance.notes != null && attendance.notes!.trim().isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Note: ${attendance.notes!.trim()}',
                 style: TextStyle(
-                  color: colorScheme.onSurface.withValues(alpha: 0.8),
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-            if (canEdit) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_note_outlined),
-                  tooltip: 'Edit attendance status',
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -338,5 +527,12 @@ class _AttendanceCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _dateLabel(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
   }
 }

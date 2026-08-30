@@ -62,6 +62,8 @@ class IssueProvider extends ChangeNotifier {
   Future<void> createIssue({
     required String branchId,
     required String reportedBy,
+    required String reporterName,
+    required String reporterRole,
     required String title,
     required String description,
     required String priority,
@@ -70,6 +72,8 @@ class IssueProvider extends ChangeNotifier {
       final issue = await _service.createIssue(
         branchId: branchId,
         reportedBy: reportedBy,
+        reporterName: reporterName,
+        reporterRole: reporterRole,
         title: title,
         description: description,
         priority: priority,
@@ -82,6 +86,7 @@ class IssueProvider extends ChangeNotifier {
       rethrow;
     }
   }
+
 
   Future<void> updateIssueStatus({
     required String id,

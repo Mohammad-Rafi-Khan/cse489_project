@@ -148,6 +148,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       product: product,
                       canEdit: canEdit,
                       onEdit: () async {
+                        if (!product.isActive) return;
                         await Navigator.pushNamed(
                           context,
                           '/product-form',
@@ -158,7 +159,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       },
                       onToggleActive: () => _toggleActive(product),
                       onViewHistory: () async {
-                        final history = await productProvider.fetchPriceHistory(product.id);
+                        final history = await productProvider.fetchPriceHistory(
+                          product.id,
+                        );
                         if (!mounted) return;
                         if (!context.mounted) return;
                         showDialog(
@@ -172,18 +175,30 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   : ListView.separated(
                                       shrinkWrap: true,
                                       itemCount: history.length,
-                                      separatorBuilder: (_, _) => const Divider(),
+                                      separatorBuilder: (_, _) =>
+                                          const Divider(),
                                       itemBuilder: (context, index) {
                                         final item = history[index];
-                                        final oldPrice = (item['old_price'] as num?)?.toDouble() ?? 0;
-                                        final newPrice = (item['new_price'] as num?)?.toDouble() ?? 0;
-                                        final updateTime = item['updated_at'] != null
-                                            ? DateTime.parse(item['updated_at'] as String)
+                                        final oldPrice =
+                                            (item['old_price'] as num?)
+                                                ?.toDouble() ??
+                                            0;
+                                        final newPrice =
+                                            (item['new_price'] as num?)
+                                                ?.toDouble() ??
+                                            0;
+                                        final updateTime =
+                                            item['updated_at'] != null
+                                            ? DateTime.parse(
+                                                item['updated_at'] as String,
+                                              )
                                             : DateTime.now();
                                         return ListTile(
-                                          title: Text('BDT ${newPrice.toStringAsFixed(0)}'),
+                                          title: Text(
+                                            'BDT ${newPrice.toStringAsFixed(0)}',
+                                          ),
                                           subtitle: Text(
-                                            'From BDT ${oldPrice.toStringAsFixed(0)} • ${updateTime.toLocal().toString().substring(0, 16)}',
+                                            'From BDT ${oldPrice.toStringAsFixed(0)} - ${updateTime.toLocal().toString().substring(0, 16)}',
                                           ),
                                         );
                                       },
@@ -193,7 +208,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
                                 child: const Text('Close'),
-                              )
+                              ),
                             ],
                           ),
                         );
@@ -353,9 +368,10 @@ class _ProductCard extends StatelessWidget {
                     if (value == 'toggle') onToggleActive();
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'edit',
-                      child: Row(
+                      enabled: isActive,
+                      child: const Row(
                         children: [
                           Icon(Icons.edit_outlined, size: 18),
                           SizedBox(width: 8),

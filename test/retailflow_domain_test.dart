@@ -32,22 +32,13 @@ String _sourceSection(String source, String start, String end) {
 void main() {
   group('0. Product Price Compatibility Tests', () {
     test(
-      'Product model reads current_price safely from modern and legacy payloads',
+      'Product model reads current_price safely and defaults missing values',
       () {
         final modern = Product.fromMap({
           'id': 'p1',
           'name': 'Rice',
           'category': 'Groceries',
           'current_price': 125.5,
-          'is_active': true,
-          'created_at': '2026-08-30T00:00:00Z',
-        });
-
-        final legacy = Product.fromMap({
-          'id': 'p2',
-          'name': 'Oil',
-          'category': 'Groceries',
-          'price': 80.0,
           'is_active': true,
           'created_at': '2026-08-30T00:00:00Z',
         });
@@ -61,7 +52,6 @@ void main() {
         });
 
         expect(modern.currentPrice, equals(125.5));
-        expect(legacy.currentPrice, equals(80.0));
         expect(missing.currentPrice, equals(0.0));
       },
     );
@@ -388,6 +378,8 @@ void main() {
           'employee_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE',
         ),
       );
+      expect(sql, contains('attendance_date date NOT NULL'));
+      expect(sql, contains('check_in_time timestamptz'));
       expect(sql, contains("status text NOT NULL DEFAULT 'present'"));
       expect(
         sql,
@@ -395,6 +387,13 @@ void main() {
       );
       expect(sql, contains('old_price numeric(14,2) NOT NULL'));
       expect(sql, contains('new_price numeric(14,2) NOT NULL'));
+      expect(
+        sql,
+        contains(
+          'CREATE OR REPLACE FUNCTION public.log_product_price_change()',
+        ),
+      );
+      expect(sql, contains('products_price_history_log'));
     });
 
     test(
@@ -739,6 +738,11 @@ void main() {
       final branchFunction = _sourceSection(
         sql,
         'CREATE OR REPLACE FUNCTION public.get_my_branch_id()',
+        'CREATE OR REPLACE FUNCTION public.retailflow_current_date()',
+      );
+      final businessDateFunction = _sourceSection(
+        sql,
+        'CREATE OR REPLACE FUNCTION public.retailflow_current_date()',
         'CREATE OR REPLACE FUNCTION public.handle_new_retailflow_user()',
       );
 
@@ -758,6 +762,64 @@ void main() {
         branchFunction,
         contains('WHERE id = auth.uid() AND is_active = true'),
       );
+      expect(
+        businessDateFunction,
+        contains("SELECT (now() AT TIME ZONE 'Asia/Dhaka')::date"),
+      );
+    });
+
+    test('Attendance, product, and leave policies use final role boundaries', () {
+      final sql = _readSource('supabase/setup.sql');
+      final migration = _readSource('supabase/final_retailflow_migration.sql');
+
+      expect(sql, contains('CREATE POLICY "attendance_select_own"'));
+      expect(sql, contains('CREATE POLICY "attendance_select_branch"'));
+      expect(sql, contains('CREATE POLICY "attendance_select_admin"'));
+      expect(
+        sql,
+        contains('CREATE POLICY "attendance_employee_checkout_today"'),
+      );
+      expect(
+        sql,
+        contains('attendance_date = public.retailflow_current_date()'),
+      );
+      expect(sql, contains('CREATE POLICY "products_select_auth"'));
+      expect(sql, contains('CREATE POLICY "products_update_manager_admin"'));
+      expect(
+        sql,
+        contains('CREATE POLICY "leave_requests_insert_employee_own"'),
+      );
+      expect(
+        sql,
+        contains('ALTER TABLE public.issue_reports ENABLE ROW LEVEL SECURITY'),
+      );
+      expect(
+        sql,
+        contains(
+          'GRANT SELECT, INSERT, UPDATE ON public.issue_reports TO authenticated',
+        ),
+      );
+      expect(
+        migration,
+        contains(
+          'GRANT SELECT, INSERT, UPDATE ON public.issue_reports TO authenticated',
+        ),
+      );
+      expect(
+        migration,
+        contains(
+          "table_name IN ('attendance', 'issue_reports', 'leave_requests'",
+        ),
+      );
+      expect(sql, contains('CREATE POLICY "issue_reports_select_branch"'));
+      expect(sql, contains('CREATE POLICY "issue_reports_select_admin"'));
+      expect(sql, contains('REVOKE UPDATE, DELETE ON public.leave_requests'));
+      expect(sql, isNot(contains('CREATE POLICY "leave_requests_update"')));
+      expect(
+        sql,
+        isNot(contains('NEW.attendance_date IS DISTINCT FROM CURRENT_DATE')),
+      );
+      expect(sql, isNot(contains('USING (true)')));
     });
 
     test('Managers can view only branch-scoped sales analytics', () {

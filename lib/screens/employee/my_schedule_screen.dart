@@ -69,7 +69,8 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
             return EmptyState(
               icon: Icons.event_busy_outlined,
               title: 'No shifts scheduled',
-              subtitle: 'You do not have any upcoming shifts in the next 7 days.',
+              subtitle:
+                  'You do not have any upcoming shifts in the next 7 days.',
               action: TextButton.icon(
                 icon: const Icon(Icons.refresh),
                 label: const Text('Refresh'),
@@ -103,7 +104,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
 class _ScheduleCard extends StatelessWidget {
   final EmployeeShift shift;
 
-  const _ScheduleCard({super.key, required this.shift});
+  const _ScheduleCard({required this.shift});
 
   @override
   Widget build(BuildContext context) {
@@ -126,10 +127,7 @@ class _ScheduleCard extends StatelessWidget {
                 color: colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                Icons.schedule_outlined,
-                color: colorScheme.primary,
-              ),
+              child: Icon(Icons.schedule_outlined, color: colorScheme.primary),
             ),
             const SizedBox(width: 14),
             Expanded(

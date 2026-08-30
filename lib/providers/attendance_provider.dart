@@ -72,9 +72,7 @@ class AttendanceProvider extends ChangeNotifier {
         employeeId: employeeId,
         branchId: branchId,
       );
-      _myAttendance = [record, ..._myAttendance.where((item) => item.date != record.date)];
-      _branchAttendance = [record, ..._branchAttendance.where((item) => item.date != record.date)];
-      _allAttendance = [record, ..._allAttendance.where((item) => item.date != record.date)];
+      _upsertRecord(record);
       notifyListeners();
       return record;
     } catch (e) {
@@ -94,39 +92,12 @@ class AttendanceProvider extends ChangeNotifier {
         employeeId: employeeId,
         branchId: branchId,
       );
-      _myAttendance = [record, ..._myAttendance.where((item) => item.date != record.date)];
-      _branchAttendance = [record, ..._branchAttendance.where((item) => item.date != record.date)];
-      _allAttendance = [record, ..._allAttendance.where((item) => item.date != record.date)];
+      _upsertRecord(record);
       notifyListeners();
       return record;
     } catch (e) {
       _errorMessage = 'Failed to check out.';
       debugPrint('Check out error: $e');
-      notifyListeners();
-      rethrow;
-    }
-  }
-
-  Future<Attendance> updateAttendanceStatus({
-    required String id,
-    required String status,
-    String? notes,
-  }) async {
-    try {
-      final record = await _service.updateAttendanceStatus(
-        id: id,
-        status: status,
-        notes: notes,
-      );
-
-      _myAttendance = _myAttendance.map((item) => item.id == id ? record : item).toList();
-      _branchAttendance = _branchAttendance.map((item) => item.id == id ? record : item).toList();
-      _allAttendance = _allAttendance.map((item) => item.id == id ? record : item).toList();
-      notifyListeners();
-      return record;
-    } catch (e) {
-      _errorMessage = 'Failed to update attendance status.';
-      debugPrint('Update attendance status error: $e');
       notifyListeners();
       rethrow;
     }
@@ -148,5 +119,29 @@ class AttendanceProvider extends ChangeNotifier {
 
   void _clearError() {
     _errorMessage = null;
+  }
+
+  void _upsertRecord(Attendance record) {
+    _myAttendance = _upsertInList(_myAttendance, record);
+    _branchAttendance = _upsertInList(_branchAttendance, record);
+    _allAttendance = _upsertInList(_allAttendance, record);
+  }
+
+  List<Attendance> _upsertInList(List<Attendance> list, Attendance record) {
+    final updated = [
+      record,
+      ...list.where(
+        (item) =>
+            item.id != record.id &&
+            !(item.employeeId == record.employeeId &&
+                _sameDay(item.date, record.date)),
+      ),
+    ];
+    updated.sort((a, b) => b.date.compareTo(a.date));
+    return updated;
+  }
+
+  bool _sameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 }

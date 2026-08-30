@@ -23,12 +23,12 @@ class Product {
   });
 
   factory Product.fromMap(Map<String, dynamic> map) {
-    final rawPrice = map['current_price'] ?? map['price'] ?? map['unit_price'];
+    final rawPrice = map['current_price'];
     final parsedPrice = rawPrice is num
         ? rawPrice.toDouble()
         : rawPrice is String
-            ? double.tryParse(rawPrice) ?? 0
-            : 0.0;
+        ? double.tryParse(rawPrice) ?? 0
+        : 0.0;
 
     return Product(
       id: map['id'] as String,

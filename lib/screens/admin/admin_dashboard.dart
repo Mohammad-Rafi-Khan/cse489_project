@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
+import '../../providers/issue_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/user_management_provider.dart';
@@ -28,6 +29,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       context.read<UserManagementProvider>().loadUsers(),
       context.read<ProductProvider>().loadProducts(),
       context.read<NotificationProvider>().loadNotifications(),
+      context.read<IssueProvider>().loadCompanyIssues(),
     ]);
   }
 
@@ -271,15 +273,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
-                          icon: Icons.event_available_outlined,
-                          title: 'Attendance Overview',
-                          subtitle: 'Review company-wide attendance and branch attendance summaries',
-                          color: Colors.green,
-                          onTap: () => Navigator.pushNamed(context, '/attendance')
-                              .then((_) => _loadData()),
-                        ),
-                        const SizedBox(height: 10),
-                        _DashboardTile(
                           icon: Icons.track_changes_outlined,
                           title: 'Sales Target Governance',
                           subtitle:
@@ -310,6 +303,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             context,
                             '/products',
                           ).then((_) => _loadData()),
+                        ),
+                        const SizedBox(height: 10),
+                        Consumer<IssueProvider>(
+                          builder: (context, issueProvider, _) {
+                            final openCount = issueProvider.issues
+                                .where((i) => i.isOpen || i.isInProgress)
+                                .length;
+                            return _DashboardTile(
+                              icon: Icons.report_problem_outlined,
+                              title: 'Issue Reports',
+                              subtitle: openCount > 0
+                                  ? '$openCount open issue${openCount == 1 ? '' : 's'} — tap to review and resolve'
+                                  : 'Review branch issues and manager escalations',
+                              color: openCount > 0 ? Colors.red : Colors.grey,
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                '/issues',
+                              ).then((_) => _loadData()),
+                            );
+                          },
                         ),
                       ],
                     ),

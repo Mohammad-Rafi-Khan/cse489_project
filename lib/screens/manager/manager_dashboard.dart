@@ -335,8 +335,7 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                         _DashboardTile(
                           icon: Icons.repeat,
                           title: 'Task Templates',
-                          subtitle:
-                              'Create and manage reusable task templates',
+                          subtitle: 'Create and manage reusable task templates',
                           color: const Color(0xFF5C6BC0),
                           onTap: () => Navigator.pushNamed(
                             context,
@@ -347,10 +346,13 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                         _DashboardTile(
                           icon: Icons.event_available_outlined,
                           title: 'Branch Attendance',
-                          subtitle: 'Track check-ins, lateness, and attendance history',
+                          subtitle:
+                              'Track check-ins, lateness, and attendance history',
                           color: Colors.green,
-                          onTap: () => Navigator.pushNamed(context, '/attendance')
-                              .then((_) => _loadData()),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/attendance',
+                          ).then((_) => _loadData()),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
@@ -408,21 +410,26 @@ class _ManagerDashboardScreenState extends State<ManagerDashboardScreen> {
                         const SizedBox(height: 10),
                         _DashboardTile(
                           icon: Icons.report_problem_outlined,
-                          title: 'Branch Issue Review',
+                          title: 'Issues & Escalations',
                           subtitle:
-                              'Monitor staff-reported issues and update resolution status',
+                              'Review employee-reported issues and escalate branch problems to admin',
                           color: Colors.red,
-                          onTap: () => Navigator.pushNamed(context, '/issues')
-                              .then((_) => _loadData()),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/issues',
+                          ).then((_) => _loadData()),
                         ),
+
                         const SizedBox(height: 10),
                         _DashboardTile(
                           icon: Icons.event_available_outlined,
-                          title: 'Leave Management',
+                          title: 'Leave Approval',
                           subtitle: 'Approve or reject employee leave requests',
                           color: Colors.green,
-                          onTap: () => Navigator.pushNamed(context, '/leave-requests')
-                              .then((_) => _loadData()),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/leave-requests',
+                          ).then((_) => _loadData()),
                         ),
                         const SizedBox(height: 10),
                         _DashboardTile(
